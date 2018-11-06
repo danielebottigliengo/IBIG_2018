@@ -1,0 +1,15 @@
+---
+title: "Case study on Logistic Regression"
+author: 
+- name: Daniele Bottigliengo
+  affiliation: Unit of Biostatistics, Epidemiology and Public Health, Deparment of Cardiac, Thoracic, Vascular Sciences and Public Health, University of Padova, Italy
+- name: Paola Berchialla
+  affiliation: Department of Biological and Clinical Sciences, University of Torino, Italy
+date: "November 22, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
