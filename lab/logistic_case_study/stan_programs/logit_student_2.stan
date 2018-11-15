@@ -2,17 +2,17 @@
 
 data {
 
-  int<lower = 1> N;                        // Number of observations
-  int<lower = 1> K;                        // Number of confounders
-  matrix[N, K] X;                          // Confounders
-  int<lower = 0, upper = 1> Y[N];          // Outcome
+  int<lower = 1> N;                     // Number of observations
+  int<lower = 1> K;                     // Number of covariates
+  matrix[N, K] X;                       // Matrix design
+  int<lower = 0, upper = 1> Y[N];       // Outcome
 
 }
 
 parameters {
 
-  real alpha;           // Intercept
-  vector[K] beta;       // Coefficients confounders
+  real alpha;       // Intercept
+  vector[K] beta;   // Coefficients
 
 }
 
@@ -23,8 +23,7 @@ model {
 
   // Priors: stan uses uniform priors by default
   target += cauchy_lpdf(alpha |0, 10) +
-            student_t_lpdf(beta[1:K-1] |7, 0, 1) +
-            student_t_lpdf(beta[K] |1, 0, 10);
+            student_t_lpdf(beta |2, 0, 1);
 
   // Likelihood
   target += bernoulli_logit_lpmf(Y | eta);
@@ -43,7 +42,7 @@ generated quantities {
   for (n in 1:N) {
 
     // Linear predictor
-    real eta_rep = alpha + X[n] * beta;
+    real eta_rep = X[n] * beta + alpha;
 
     // Predicted probabilities
     pred_probs[n] = inv_logit(eta_rep);

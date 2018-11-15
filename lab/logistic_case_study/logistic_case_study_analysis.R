@@ -19,13 +19,12 @@ source(here::here("lab/logistic_case_study/logit_misc_functions.R"))
 # provide in terms of regularization (shrinkage) of the inference
 # process.
 
-# The analysis will be presented following the Bayesian workflow that
-# I will present in the previous section:
+# The analysis will be presented focusing of the following aspects
+# of the Bayesian data analysis:
 #   1) Exploratory data analysis
-#   2) Prior predictive checking
-#   3) Model fitting and algorithm diagnostics
-#   4) Posterior predictive checks
-#   5) Model comparison
+#   2) Fitting models with different priors
+#   3) The importance of weakly informative priors on reguralization
+#   4) Model comparison
 
 mcmc_seed <- 140509
 
@@ -157,17 +156,19 @@ db_logit_analysis <- db_logit %>%
   ) %>%
   mutate(
     gender_female = as.numeric(if_else(gender == "female", 1, 0)),
-    age_100 = age_year/100,
-    timing_onset_influenza_years = timing_onset_influenza_days/365.25,
     influenza = as.integer(if_else(influenza == "Yes", 1, 0))
+  )  %>%
+  mutate_at(
+    vars(race:home_oxygen_use, current_smoking:vaccine, gender_female),
+    funs(as.numeric(scale(x = ., scale = FALSE)))
+  ) %>%
+  mutate(
+    age_100 = age_year/100,
+    timing_onset_influenza_months = timing_onset_influenza_days/30
   ) %>%
   dplyr::select(
     race:home_oxygen_use, gender_female, current_smoking:other_diseases,
-    age_100, timing_onset_influenza_years, vaccine, influenza
-  ) %>%
-  mutate_at(
-    vars(race:timing_onset_influenza_years),
-    funs(as.numeric(scale(x = ., scale = FALSE)))
+    age_100, timing_onset_influenza_months, vaccine, influenza
   )
 
 design_matrix_logit <- db_logit_analysis %>%
@@ -261,9 +262,10 @@ fitted_uniform <- sampling(
 
 # Many problematic transitions: inference is biased
 post_uniform <- rstan::extract(fitted_uniform)
-post_coefs_uniform <- as.matrix(
+post_coefs_uniform <- as.data.frame(
   fitted_uniform, pars = c("alpha", "beta")
-)
+) %>%
+  setNames(c("intercept", names(design_matrix_logit)))
 
 # 2C) Diagnose divergent transitions -----------------------------------
 print(fitted_uniform, pars = c("alpha", "beta"))
@@ -327,7 +329,8 @@ fitted_vague <- sampling(
 post_vague <- rstan::extract(fitted_vague)
 post_coefs_vague <- as.matrix(
   fitted_vague, pars = c("alpha", "beta")
-)
+) %>%
+  setNames(c("intercept", names(design_matrix_logit)))
 
 # 3C) Diagnose divergent transitions -----------------------------------
 print(fitted_vague, pars = c("alpha", "beta"))
@@ -391,7 +394,8 @@ fitted_cauchy <- sampling(
 post_cauchy <- rstan::extract(fitted_cauchy)
 post_coefs_cauchy <- as.matrix(
   fitted_cauchy, pars = c("alpha", "beta")
-)
+) %>%
+  setNames(c("intercept", names(design_matrix_logit)))
 
 # 4C) Diagnose divergent transitions -----------------------------------
 print(fitted_cauchy, pars = c("alpha", "beta"))
@@ -455,7 +459,8 @@ fitted_student_3 <- sampling(
 post_student_3 <- rstan::extract(fitted_student_3)
 post_coefs_student_3 <- as.matrix(
   fitted_student_3, pars = c("alpha", "beta")
-)
+) %>%
+  setNames(c("intercept", names(design_matrix_logit)))
 
 # 5C) Diagnose divergent transitions -----------------------------------
 print(fitted_student_3, pars = c("alpha", "beta"))
@@ -519,7 +524,8 @@ fitted_student_7 <- sampling(
 post_student_7 <- rstan::extract(fitted_student_7)
 post_coefs_student_7 <- as.matrix(
   fitted_student_7, pars = c("alpha", "beta")
-)
+) %>%
+  setNames(c("intercept", names(design_matrix_logit)))
 
 # 6C) Diagnose divergent transitions -----------------------------------
 print(fitted_student_7, pars = c("alpha", "beta"))
@@ -583,7 +589,8 @@ fitted_student_3_unp <- sampling(
 post_student_3_unp <- rstan::extract(fitted_student_3_unp)
 post_coefs_student_3_unp <- as.matrix(
   fitted_student_3_unp, pars = c("alpha", "beta")
-)
+) %>%
+  setNames(c("intercept", names(design_matrix_logit)))
 
 # 7C) Diagnose divergent transitions -----------------------------------
 print(fitted_student_3_unp, pars = c("alpha", "beta"))
@@ -632,7 +639,7 @@ ggsave(
   width = 10, height = 8
 )
 
-# 8) Weakly informative priors 2: t-student 7 --------------------------
+# 8) Weakly informative priors 2: t-student 7 unpenalized --------------
 # 8B) Fit the model to real data ---------------------------------------
 comp_student_7_unp <- stan_model(
   file = "lab/logistic_case_study/stan_programs/logit_student_7_unp.stan"
@@ -646,7 +653,8 @@ fitted_student_7_unp <- sampling(
 post_student_7_unp <- rstan::extract(fitted_student_7_unp)
 post_coefs_student_7_unp <- as.matrix(
   fitted_student_7_unp, pars = c("alpha", "beta")
-)
+) %>%
+  setNames(c("intercept", names(design_matrix_logit)))
 
 # 8C) Diagnose divergent transitions -----------------------------------
 print(fitted_student_7_unp, pars = c("alpha", "beta"))
@@ -695,10 +703,141 @@ ggsave(
   width = 10, height = 8
 )
 
-# 9) Model comparison --------------------------------------------------
+# 9) Weakly informative priors 2: t-student 2 --------------------------
+# 9B) Fit the model to real data ---------------------------------------
+comp_student_2 <- stan_model(
+  file = "lab/logistic_case_study/stan_programs/logit_student_2.stan"
+)
+
+fitted_student_2 <- sampling(
+  object = comp_student_2, data = db_logit_list,
+  chains = 4L, warmup = 1000L, iter = 2000L, seed = mcmc_seed
+)
+
+post_student_2 <- rstan::extract(fitted_student_2)
+post_coefs_student_2 <- as.matrix(
+  fitted_student_2, pars = c("alpha", "beta")
+) %>%
+  setNames(c("intercept", names(design_matrix_logit)))
+
+# 9C) Diagnose divergent transitions -----------------------------------
+print(fitted_student_2, pars = c("alpha", "beta"))
+
+student_recover_2 <- mcmc_recover_hist(
+  x = post_coefs_student_2, true = true_betas
+)
+
+ggsave(
+  filename = here::here(
+    "lab/logistic_case_study/figures/student_recover_2.png"
+  ),
+  plot = student_recover_2,
+  width = 10, height = 8
+)
+
+# 9D) Posterior predictive checks --------------------------------------
+y_rep <- as.matrix(fitted_student_2, pars = "y_rep")
+
+prop_zero <- function(x) mean(x == 0)
+prop_one <- function(x) mean(x == 1)
+
+student_zero_2 <- ppc_stat(
+  y = db_logit_analysis[["influenza"]], yrep = y_rep[1:200, ],
+  stat = prop_zero
+)
+
+ggsave(
+  filename = here::here(
+    "lab/logistic_case_study/figures/student_zero_2.png"
+  ),
+  plot = student_zero_2,
+  width = 10, height = 8
+)
+
+student_one_2 <- ppc_stat(
+  y = db_logit_analysis[["influenza"]], yrep = y_rep[1:200, ],
+  stat = prop_one
+)
+
+ggsave(
+  filename = here::here(
+    "lab/logistic_case_study/figures/student_one_2.png"
+  ),
+  plot = student_one_2,
+  width = 10, height = 8
+)
+
+# 10) Weakly informative priors 2: t-student 2 unpenalized -------------
+# 10B) Fit the model to real data --------------------------------------
+comp_student_2_unp <- stan_model(
+  file = "lab/logistic_case_study/stan_programs/logit_student_2_unp.stan"
+)
+
+fitted_student_2_unp <- sampling(
+  object = comp_student_2_unp, data = db_logit_list,
+  chains = 4L, warmup = 1000L, iter = 2000L, seed = mcmc_seed
+)
+
+post_student_2_unp <- rstan::extract(fitted_student_2_unp)
+post_coefs_student_2_unp <- as.matrix(
+  fitted_student_2_unp, pars = c("alpha", "beta")
+) %>%
+  setNames(c("intercept", names(design_matrix_logit)))
+
+# 10C) Diagnose divergent transitions ----------------------------------
+print(fitted_student_2_unp, pars = c("alpha", "beta"))
+
+student_recover_2_unp <- mcmc_recover_hist(
+  x = post_coefs_student_2_unp, true = true_betas
+)
+
+ggsave(
+  filename = here::here(
+    "lab/logistic_case_study/figures/student_recover_2_unp.png"
+  ),
+  plot = student_recover_2_unp,
+  width = 10, height = 8
+)
+
+# 10D) Posterior predictive checks -------------------------------------
+y_rep <- as.matrix(fitted_student_2_unp, pars = "y_rep")
+
+prop_zero <- function(x) mean(x == 0)
+prop_one <- function(x) mean(x == 1)
+
+student_zero_2_unp <- ppc_stat(
+  y = db_logit_analysis[["influenza"]], yrep = y_rep[1:200, ],
+  stat = prop_zero
+)
+
+ggsave(
+  filename = here::here(
+    "lab/logistic_case_study/figures/student_zero_2_unp.png"
+  ),
+  plot = student_zero_2_unp,
+  width = 10, height = 8
+)
+
+student_one_2_unp <- ppc_stat(
+  y = db_logit_analysis[["influenza"]], yrep = y_rep[1:200, ],
+  stat = prop_one
+)
+
+ggsave(
+  filename = here::here(
+    "lab/logistic_case_study/figures/student_one_2_unp.png"
+  ),
+  plot = student_one_2_unp,
+  width = 10, height = 8
+)
+
+
+
+# 11) Model comparison -------------------------------------------------
 model_list <- list(
   fitted_uniform, fitted_vague, fitted_cauchy, fitted_student_3,
-  fitted_student_7, fitted_student_3_unp, fitted_student_7_unp
+  fitted_student_7, fitted_student_3_unp, fitted_student_7_unp,
+  fitted_student_2, fitted_student_2_unp
 )
 
 comp_model_list <- map(
@@ -707,15 +846,10 @@ comp_model_list <- map(
   setNames(
     object = ., nm = c(
       "uniform", "vague", "cauchy", "student_t_3", "student_t_7",
-      "student_t_3_unp", "student_t_7_unp"
+      "student_t_3_unp", "student_t_7_unp", "student_t_2",
+      "student_t_2_unp"
     )
   )
-
-# Refit loo for cauchy (many bad values)
-loo_cauchy <- loo(
-  comp_model_list$cauchy$log_lik, r_eff = comp_model_list$cauchy$r_eff,
-  save_psis = TRUE
-)
 
 loo_list <- map(.x = comp_model_list, ~ .x[["loo"]])
 stacking_weights <- loo_model_weights(loo_list[4:length(loo_list)])
@@ -727,15 +861,182 @@ pseudo_bma_bb <- loo_model_weights(
   loo_list[4:length(loo_list)], method = "pseudobma", BB = TRUE
 )
 
+# What if we know the disease is rare? ---------------------------------
+# 12) T-student 2 rare -------------------------------------------------
+# 12B) Fit the model to real data --------------------------------------
+comp_student_2_rare <- stan_model(
+  file = "lab/logistic_case_study/stan_programs/logit_student_2_rare.stan"
+)
+
+fitted_student_2_rare <- sampling(
+  object = comp_student_2_rare, data = db_logit_list,
+  chains = 4L, warmup = 1000L, iter = 2000L, seed = mcmc_seed
+)
+
+post_student_2_rare <- rstan::extract(fitted_student_2_rare)
+post_coefs_student_2_rare <- as.matrix(
+  fitted_student_2_rare, pars = c("alpha", "beta")
+) %>%
+  setNames(c("intercept", names(design_matrix_logit)))
+
+# 12C) Diagnose divergent transitions ----------------------------------
+print(fitted_student_2_rare, pars = c("alpha", "beta"))
+
+student_recover_2_rare <- mcmc_recover_hist(
+  x = post_coefs_student_2_rare, true = true_betas
+)
+
+ggsave(
+  filename = here::here(
+    "lab/logistic_case_study/figures/student_recover_2_rare.png"
+  ),
+  plot = student_recover_2_rare,
+  width = 10, height = 8
+)
+
+# 12D) Posterior predictive checks -------------------------------------
+y_rep <- as.matrix(fitted_student_2_rare, pars = "y_rep")
+
+prop_zero <- function(x) mean(x == 0)
+prop_one <- function(x) mean(x == 1)
+
+student_zero_2_rare <- ppc_stat(
+  y = db_logit_analysis[["influenza"]], yrep = y_rep[1:200, ],
+  stat = prop_zero
+)
+
+ggsave(
+  filename = here::here(
+    "lab/logistic_case_study/figures/student_zero_2_rare.png"
+  ),
+  plot = student_zero_2_rare,
+  width = 10, height = 8
+)
+
+student_one_2_rare <- ppc_stat(
+  y = db_logit_analysis[["influenza"]], yrep = y_rep[1:200, ],
+  stat = prop_one
+)
+
+ggsave(
+  filename = here::here(
+    "lab/logistic_case_study/figures/student_one_2_rare.png"
+  ),
+  plot = student_one_2_rare,
+  width = 10, height = 8
+)
+
+# 13)T-student 2 rare unpenalized --------------------------------------
+# 13B) Fit the model to real data --------------------------------------
+comp_student_2_unp_rare <- stan_model(
+  file = "lab/logistic_case_study/stan_programs/logit_student_2_unp_rare.stan"
+)
+
+fitted_student_2_unp_rare <- sampling(
+  object = comp_student_2_unp_rare, data = db_logit_list,
+  chains = 4L, warmup = 1000L, iter = 2000L, seed = mcmc_seed
+)
+
+post_student_2_unp_rare <- rstan::extract(fitted_student_2_unp_rare)
+post_coefs_student_2_unp_rare <- as.matrix(
+  fitted_student_2_unp_rare, pars = c("alpha", "beta")
+) %>%
+  setNames(c("intercept", names(design_matrix_logit)))
+
+# 13C) Diagnose divergent transitions ----------------------------------
+print(fitted_student_2_unp_rare, pars = c("alpha", "beta"))
+
+student_recover_2_unp_rare <- mcmc_recover_hist(
+  x = post_coefs_student_2_unp_rare, true = true_betas
+)
+
+ggsave(
+  filename = here::here(
+    "lab/logistic_case_study/figures/student_recover_2_unp_rare.png"
+  ),
+  plot = student_recover_2_unp_rare,
+  width = 10, height = 8
+)
+
+# 13D) Posterior predictive checks -------------------------------------
+y_rep <- as.matrix(fitted_student_2_unp_rare, pars = "y_rep")
+
+prop_zero <- function(x) mean(x == 0)
+prop_one <- function(x) mean(x == 1)
+
+student_zero_2_unp_rare <- ppc_stat(
+  y = db_logit_analysis[["influenza"]], yrep = y_rep[1:200, ],
+  stat = prop_zero
+)
+
+ggsave(
+  filename = here::here(
+    "lab/logistic_case_study/figures/student_zero_2_unp_rare.png"
+  ),
+  plot = student_zero_2_unp_rare,
+  width = 10, height = 8
+)
+
+student_one_2_unp_rare <- ppc_stat(
+  y = db_logit_analysis[["influenza"]], yrep = y_rep[1:200, ],
+  stat = prop_one
+)
+
+ggsave(
+  filename = here::here(
+    "lab/logistic_case_study/figures/student_one_2_unp_rare.png"
+  ),
+  plot = student_one_2_unp_rare,
+  width = 10, height = 8
+)
+
+# 14) Model comparison -------------------------------------------------
+model_list_rare <- list(
+  fitted_uniform, fitted_vague, fitted_cauchy, fitted_student_3,
+  fitted_student_7, fitted_student_3_unp, fitted_student_7_unp,
+  fitted_student_2, fitted_student_2_unp, fitted_student_2_rare,
+  fitted_student_2_unp_rare
+)
+
+comp_model_list_rare <- map(
+  .x = model_list_rare, ~ model_comparison_loo(stan_fit = .x)
+) %>%
+  setNames(
+    object = ., nm = c(
+      "uniform", "vague", "cauchy", "student_t_3", "student_t_7",
+      "student_t_3_unp", "student_t_7_unp", "student_t_2",
+      "student_t_2_unp", "student_2_rare", "student_2_unp_rare"
+    )
+  )
+
+loo_list_rare <- map(.x = comp_model_list_rare, ~ .x[["loo"]])
+stacking_weights_rare <- loo_model_weights(
+  loo_list_rare[4:length(loo_list_rare)]
+)
+pseudo_bma_rare <- loo_model_weights(
+  loo_list_rare[4:length(loo_list_rare)],
+  method = "pseudobma", BB = FALSE
+)
+
+pseudo_bma_bb_rare <- loo_model_weights(
+  loo_list_rare[4:length(loo_list_rare)],
+  method = "pseudobma", BB = TRUE
+)
+
 # Save everything needed for the slides --------------------------------
 save(
   post_uniform, post_vague, post_cauchy, post_student_3,
   post_student_7, post_student_3_unp, post_student_7_unp,
+  post_student_2, post_student_2_unp, post_student_2_rare,
+  post_student_2_unp_rare,
   post_coefs_uniform, post_coefs_vague, post_coefs_cauchy,
   post_coefs_student_3, post_coefs_student_7, post_coefs_student_3_unp,
-  post_coefs_student_7_unp,
+  post_coefs_student_7_unp, post_coefs_student_2,
+  post_coefs_student_2_unp, post_coefs_student_2_rare,
+  post_coefs_student_2_unp_rare,
   comp_model_list, loo_list, stacking_weights, pseudo_bma,
-  pseudo_bma_bb,
+  pseudo_bma_bb, comp_model_list_rare, loo_list_rare,
+  stacking_weights_rare, pseudo_bma_rare, pseudo_bma_bb_rare,
   file = here::here("lab/logistic_case_study/logit_analysis.rda")
 )
 

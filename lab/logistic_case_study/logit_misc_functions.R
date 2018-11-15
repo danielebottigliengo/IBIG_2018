@@ -104,6 +104,21 @@ model_comparison_loo <- function(stan_fit){
 
 }
 
+# Predictions survival -------------------------------------------------
+post_pred_surv <- function(pred_df, time_fu_draw) {
 
+  pred_surv_df <- cbind(pred_df, time_fu_draw)
+
+  surv_obj <- survfit(
+    Surv(time_fu_draw, fustat) ~ rx, data = pred_surv_df
+  )
+
+  data_frame(
+    id_subject = 1:nrow(pred_surv_df),
+    treatment = pred_surv_df$rx, status = pred_surv_df$fustat,
+    time_fu = surv_obj$time, surv = surv_obj$surv
+  )
+
+}
 
 
