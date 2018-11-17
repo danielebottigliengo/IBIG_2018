@@ -56,20 +56,36 @@ km_resid_ds <- survfit(
   Surv(futime, fustat) ~ resid.ds, data = db_ovarian
 )
 
+km_ecog_ps <- survfit(
+  Surv(futime, fustat) ~ ecog.ps, data = db_ovarian
+)
+
 p_trt <- ggsurvplot(
   km_trt, data = db_ovarian, risk.table = TRUE, pval = FALSE,
   conf.int = TRUE, xlab = "Follow-up time in days",
   surv.median.line = "hv", risk.table.col = "strata",
-  legend.labs = c("Placebo", "Treatment"),
-  risk.table.height = 0.25, ggtheme = theme_bw()
+  legend.labs = c("Cyclo", "Cyclo + Adria"),
+  risk.table.height = 0.25, ggtheme = theme_bw(),
+  main = "Treatment groups"
 )
 
 p_resid_ds <- ggsurvplot(
   km_resid_ds, data = db_ovarian, risk.table = TRUE, pval = FALSE,
   conf.int = TRUE, xlab = "Follow-up time in days",
   surv.median.line = "hv", risk.table.col = "strata",
-  legend.labs = c("No", "Yes"),
-  risk.table.height = 0.25, ggtheme = theme_bw()
+  palette = c("dodgerblue2", "firebrick"), legend.labs = c("No", "Yes"),
+  risk.table.height = 0.25, ggtheme = theme_bw(),
+  main = "Residual Disease"
+)
+
+p_ecog_ps <- ggsurvplot(
+  km_ecog_ps, data = db_ovarian, risk.table = TRUE, pval = FALSE,
+  conf.int = TRUE, xlab = "Follow-up time in days",
+  surv.median.line = "hv", risk.table.col = "strata",
+  legend.labs = c("ECOG = 1", "ECOG = 2"),
+  palette = c("#E7B800", "#2E9FDF"),
+  risk.table.height = 0.25, ggtheme = theme_bw(),
+  main = "ECOG performance"
 )
 
 # 2) Prior Predictive Checking -----------------------------------------
@@ -169,40 +185,6 @@ coef_weibull_centered <- as.data.frame(
     nm = c("alpha", "intercept", colnames(ovarian_scaled_list$x_obs))
   )
 
-y_rep <- as.matrix(fitted_weibull_centered, pars = c("y_rep"))
-
-# Check if the replicated data makes sense with respect to
-# the observed data
-# Compare posterior with observed
-ppc_dens_overlay(y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ]) +
-  xlim(0, 100)
-
-# Greater simulated follow-up times seem to be frequent...
-
-# Compare some quantiles of follow-up times
-ppc_median <- ppc_stat(
-  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ], stat = "median"
-)
-
-# ... also by group of treatment
-ppc_median_grouped <- ppc_stat_grouped(
-  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
-  group = db_ovarian_scaled[["rx"]], stat = "median"
-)
-
-first_quart <- function(x) quantile(x, probs = 0.25)
-third_quart <- function(x) quantile(x, probs = 0.75)
-
-ppc_first <- ppc_stat(
-  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
-  stat = "first_quart"
-)
-
-ppc_third <- ppc_stat(
-  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
-  stat = "third_quart"
-)
-
 # Simulated quantiles follow-up times seems to be too greater than those
 # observed. We can revise the model by changing family distribution:
 # we can try a log-normal or a Gamma family
@@ -230,34 +212,6 @@ coef_lognormal <- as.data.frame(
     nm = c("sigma", "intercept", colnames(ovarian_scaled_list$x_obs))
   )
 
-y_rep <- as.matrix(fitted_lognormal, pars = c("y_rep"))
-
-ppc_dens_overlay(y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ]) +
-  xlim(0, 100)
-
-
-ppc_median <- ppc_stat(
-  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ], stat = "median"
-)
-
-ppc_median_grouped <- ppc_stat_grouped(
-  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
-  group = db_ovarian_scaled[["rx"]], stat = "median"
-)
-
-first_quart <- function(x) quantile(x, probs = 0.25)
-third_quart <- function(x) quantile(x, probs = 0.75)
-
-ppc_first <- ppc_stat(
-  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
-  stat = "first_quart"
-)
-
-ppc_third <- ppc_stat(
-  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
-  stat = "third_quart"
-)
-
 # 5B) Gamma ------------------------------------------------------------
 gamma_comp <- stan_model(
   file = "lab/survival_case_study/stan_programs/gamma.stan"
@@ -279,33 +233,6 @@ coef_gamma <- as.data.frame(
     object = .,
     nm = c("shape", "intercept", colnames(ovarian_scaled_list$x_obs))
   )
-
-y_rep <- as.matrix(fitted_gamma, pars = c("y_rep"))
-
-ppc_dens_overlay(y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ]) +
-  xlim(0, 100)
-
-ppc_median <- ppc_stat(
-  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ], stat = "median"
-)
-
-ppc_median_grouped <- ppc_stat_grouped(
-  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
-  group = db_ovarian_scaled[["rx"]], stat = "median"
-)
-
-first_quart <- function(x) quantile(x, probs = 0.25)
-third_quart <- function(x) quantile(x, probs = 0.75)
-
-ppc_first <- ppc_stat(
-  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
-  stat = "first_quart"
-)
-
-ppc_third <- ppc_stat(
-  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
-  stat = "third_quart"
-)
 
 # 6) Compare models ----------------------------------------------------
 model_list_surv <- list(
@@ -336,18 +263,18 @@ pseudo_bma_bb_surv <- loo_model_weights(
 
 # 7) Predictions with the model ----------------------------------------
 # We will use lognormal model to describe the effect of the treatment.
-# First I need to simulate the a randomized study. Let's say we have
-# 50 placebo and 50 treatment and in each group 25 experience the event
-n_trt <- 50L
-n_stat <- 25L
-
-pred_df <- data_frame(
-  age = rep(median(db_ovarian_scaled$age), n_trt * 2),
-  redis_ds = rep(max(db_ovarian_scaled$resid_ds), n_trt * 2),
-  ecog_ps = rep(max(db_ovarian_scaled$ecog_ps), n_trt * 2),
-  rx = c(rep(-0.5, n_trt), rep(0.5, n_trt)),
-  fustat = rbinom(n = n_trt * 2, size = 1, prob = 0.4)
-)
+# To do this, I need to define some time of the follow-up of a future
+# study and compare this time with time to event. If time-to-event
+# is higher than time of follow-up, then the patient is dead, otherwise
+# it is right censored
+pred_df <- expand.grid(
+  age = median(db_ovarian_scaled$age),
+  redis_ds = max(db_ovarian_scaled$resid_ds),
+  ecog_ps = max(db_ovarian_scaled$ecog_ps),
+  rx = c(-0.5, 0.5),
+  study_time = seq(from = 0, to = 3, by = 0.1)
+) %>%
+  mutate(sub_id = seq_along(1:nrow(.)))
 
 # Pass everything into stan as a list
 ovarian_scaled_pred_list <- list(
@@ -364,18 +291,10 @@ ovarian_scaled_pred_list <- list(
     filter(fustat == 0) %>%
     dplyr::select(age:rx) %>%
     as.matrix(),
-  n_obs_new = pred_df %>% filter(fustat == 1) %>% nrow(),
-  n_cens_new = pred_df %>% filter(fustat == 0) %>% nrow(),
-  x_obs_new = pred_df %>%
-    filter(fustat == 1) %>%
-    dplyr::select(age:rx) %>%
-    as.matrix(),
-  x_cens_new = pred_df %>%
-    filter(fustat == 0) %>%
-    dplyr::select(age:rx) %>%
-    as.matrix()
+  n_new = nrow(pred_df),
+  x_new = as.matrix(pred_df %>% dplyr::select(age:rx)),
+  times = pred_df[["study_time"]]
 )
-
 
 lognormal_pred_comp <- stan_model(
   file = "lab/survival_case_study/stan_programs/lognormal_pred.stan"
@@ -390,60 +309,40 @@ fitted_lognormal_pred <- sampling(
   seed = mcmc_seed
 )
 
-# Get the predicted values and compute 90% posterior intervals
-pred_time_lognormal <- as.data.frame(
-  fitted_lognormal_pred, pars = c("y_pred")
+# Get the predicted values and compute 80% posterior intervals
+surv_pred <- as.data.frame(
+  x = fitted_lognormal_pred, pars = c("surv_pred")
 ) %>%
   map_df(
     .x = .,
     ~ data_frame(
-      median_time = median(.x),
-      lower_time_80 = quantile(.x, probs = 0.10),
-      upper_time_80 = quantile(.x, probs = 0.90)
+      post_median = median(.x),
+      lower_80 = quantile(.x, probs = 0.10),
+      upper_80 = quantile(.x, probs = 0.90)
     )
   )
 
-pred_post_lognormal <- as.data.frame(
-  fitted_lognormal_pred, pars = c("y_pred")
-) %>%
-  t() %>%
-  as.data.frame()
-
-post_surv_pred <- map_df(
-  .x = pred_post_lognormal,
-  ~ post_pred_surv(pred_df = pred_df, time_fu_draw = .x)
-) %>%
-  mutate(draw = rep(1:4000, each = n_trt * 2)) %>%
+post_surv_pred <- bind_cols(pred_df, surv_pred) %>%
+  rename(treatment = rx) %>%
   mutate(
     treatment = factor(
-      if_else(treatment == -0.5, "Placebo", "Treatment")
-    )
-  ) %>%
-  group_by(id_subject) %>%
-  dplyr::summarize(
-    median_time = median(time_fu),
-    lower_time = quantile(time_fu , probs = 0.10),
-    upper_time = quantile(time_fu , probs = 0.80),
-    median_surv = median(surv),
-    lower_surv = quantile(surv, probs = 0.10),
-    upper_surv = quantile(surv, probs = 0.80)
-  ) %>%
-  mutate(
-    treatment = factor(
-      c(rep("Placebo", n_trt), rep("Treatment", n_trt))
+      case_when(
+        treatment == -0.5 ~ "cyclo",
+        treatment == 0.5 ~ "cyclo + adria"
+      )
     )
   )
 
 # Plot the survival curves with relative 80% posterior intervals
 lognormal_survplot <- ggplot(
   data = post_surv_pred, mapping = aes(
-    x = median_time, y = median_surv, colour = treatment,
+    x = study_time, y = post_median, colour = treatment,
     fill = treatment
   )
 ) +
   geom_line() +
   geom_ribbon(
-    mapping = aes(ymin = lower_surv, ymax = upper_surv), alpha = 0.2
+    mapping = aes(ymin = lower_80, ymax = upper_80), alpha = 0.2
   ) +
   scale_colour_discrete(
     name = "Group"
@@ -457,7 +356,8 @@ lognormal_survplot <- ggplot(
 
 # Save everything for the slides ---------------------------------------
 save(
-  p_trt, p_resid_ds, recover_fake_weibull_centered, model_list_surv,
+  p_trt, p_resid_ds, p_ecog_ps,
+  recover_fake_weibull_centered, model_list_surv, loo_list_surv,
   stacking_weights_surv, pseudo_bma_surv, pseudo_bma_bb_surv,
   fitted_lognormal_pred, lognormal_survplot,
   file = here::here("lab/survival_case_study/survival_analysis.rda")

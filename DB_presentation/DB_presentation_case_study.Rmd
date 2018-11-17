@@ -1,0 +1,547 @@
+---
+title: "\\Large\\textbf{Introduction to Bayesian computation and application to regression models and survival analysis}"
+subtitle: "\\large\\textbf{\\textrm{IBIG 2018}}"
+author: "\\centering\\underline{\\textbf{Daniele Bottigliengo}}\\thanks{\\tiny Unit of Biostatistics, Epidemiology and Public Health, Department of \\newline Cardiac, Thoracic, Vascular Sciences and Public Health, University of Padua, Italy}"
+date: "\\centering\\emph{Padova, Italy, November 22, 2018}"
+header-includes:
+   - \usepackage{booktabs}
+   - \usepackage{subfig}
+   - \usepackage{multicol}
+   - \usepackage{rotating}
+   - \usepackage{mathtools}
+   - \usepackage{pgfplots}
+   - \usepackage{listings}
+   - \usepackage{multirow}
+   - \usepackage{amssymb}
+   - \usepackage{pifont}
+   - \usepackage{tikz}
+   - \usepackage{graphics}
+   - \usepackage{hyperref}
+   - \usepackage{enumerate}
+   - \hypersetup{
+    colorlinks = true,
+    linkcolor = blue,
+    filecolor = magenta,      
+    urlcolor = cyan,}
+output: 
+  beamer_presentation: 
+    fig_caption: yes
+    keep_tex: yes
+    theme: Padova
+classoption: [a4paper]
+biblio-style:  alphabetic
+biblio-citestyle: authoryear
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(comment = '')
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r, include = FALSE, message = FALSE}
+library(tidyverse)
+library(rstan)
+  options(mc.cores = parallel::detectCores() - 1)
+  rstan_options(auto_write = TRUE)
+  Sys.setenv(LOCAL_CPPFLAGS = c('-march=native'))
+library(bayesplot)
+library(loo)
+library(survival)
+library(survminer)
+library(knitr)
+library(broom)
+  
+load(here::here("lab/logistic_case_study/logit_analysis.rda"))
+load(here::here("lab/survival_case_study/survival_analysis.rda"))
+
+# Rescale covariates for computational ease
+db_ovarian <- ovarian
+
+db_ovarian_scaled <- ovarian %>%
+  janitor::clean_names() %>%
+  dplyr::select(age, resid_ds, ecog_ps, rx, futime, fustat) %>%
+  mutate(age = age/100) %>%
+  mutate_at(
+    vars(age:rx), funs(as.numeric(scale(x = ., scale = FALSE)))
+  ) %>%
+  mutate(futime = futime/365.25)
+
+ovarian_scaled_list <- list(
+  n_obs = db_ovarian_scaled %>% filter(fustat == 1) %>% nrow(),
+  n_cens = db_ovarian_scaled %>% filter(fustat == 0) %>% nrow(),
+  y_obs = db_ovarian_scaled %>% filter(fustat == 1) %>% .[["futime"]],
+  y_cens = db_ovarian_scaled %>% filter(fustat == 0) %>% .[["futime"]],
+  k = ncol(db_ovarian_scaled) - 2L,
+  x_obs = db_ovarian_scaled %>%
+    filter(fustat == 1) %>%
+    dplyr::select(age:rx) %>%
+    as.matrix(),
+  x_cens = db_ovarian_scaled %>%
+    filter(fustat == 0) %>%
+    dplyr::select(age:rx) %>%
+    as.matrix()
+)
+```
+
+# Survival Analysis Case Study
+
+## Survival Ovarian Cancer
+
+\begin{itemize}
+\setlength\itemsep{1em}
+  \item{Randomized trial comparing treatment of patients with advanced
+        ovarian carcinoma (stages $IIIB$ and $IV$)}
+  \item{Two groups of patients:}
+  \begin{itemize}
+    \item{Cyclophosphamide alone ($1 \> g/m^{2}$)}
+    \item{Cyclophosphamide ($500 \> \mu g/m^{2}$) plus Adriamycin 
+        ($40 \> \mu g/m2$)}
+  \end{itemize}
+\item{Intravenous (IV) injection every $3$ weeks}
+\end{itemize}
+
+## The dataset (1)
+\begin{itemize}
+\setlength\itemsep{1em}
+  \item{$26$ women enrolled}
+  \item{The following information were retrieved:}
+  \begin{itemize}
+    \item{Age}
+    \item{Presence of residual disease}
+    \item{ECOG performance}
+    \item{Median follow-up time in the Cyclophosphamide group: 
+          $448$ days}
+    \item{Median follow-up time in the Cyclophosphamide plus 
+          Adriamycin $563$ days}
+  \end{itemize}
+\item{$12$ patients died during the study and $14$ were right-censored}
+\end{itemize}
+
+## The dataset (2)
+\tiny
+```{r}
+ovarian_print <- ovarian %>% 
+  rename(
+    follow_up_days = futime, status = fustat, 
+    residual_disease = resid.ds, treatment = rx,
+    ecog_performance = ecog.ps
+  ) %>% 
+  mutate(
+    status = factor(
+      if_else(status == 0, "alive", "dead")
+    ),
+    residual_disease = factor(
+      if_else(residual_disease == 1, "no", "yes")
+    ),
+    treatment = factor(
+      if_else(treatment == 1, "Cyclo", "Cyclo + Adria"))
+  )
+
+kable(ovarian_print %>% slice(1:10))
+```
+
+## Exploratory data analysis (1)
+```{r, fig.height = 6, fig.width = 8}
+p_trt
+```
+
+
+## Exploratory data analysis (2)
+```{r, fig.height = 6, fig.width = 8}
+p_resid_ds
+```
+
+## Exploratory data analysis (3)
+```{r, fig.height = 6, fig.width = 8}
+p_ecog_ps
+```
+
+## Survival Model
+
+Weibull parametric proportional hazard model:
+  $$
+  f \left( t \vert \alpha, \sigma \right) = \frac{\alpha}{\sigma} \left( \frac{t}{\sigma}\right)^{\alpha - 1} e ^{ - \left( \frac{t}{\sigma} \right) }
+  $$
+where:
+
+\begin{itemize}
+ \item{$\alpha$ is the shape parameter}
+ \item{$\sigma$ is the scale parameter, where $\sigma = e ^{ - \left( \frac{\eta}{\alpha} \right) }$}.
+ \item{$\eta$ is the linear predictor and it can be expressed as 
+       function of some covariates}
+\end{itemize}
+
+## Fake data simulations
+\begin{itemize}
+  \item{Starting point of model fitting}
+  \item{Check if the model makes sense}
+\end{itemize}
+
+\begin{enumerate}
+  \item{Simulate fake data from the prior predictive distributions}
+  \item{Fit the model to the simulated data}
+  \item{Are true parameters values included in the posterior 
+        distributions?}
+\end{enumerate}
+
+## The model: data block
+\scriptsize
+```{r, echo = TRUE, results = "hide"}
+"
+data {
+
+  int<lower = 0> n_obs;             // Number of deaths
+  int<lower = 0> n_cens;            // Number of censored
+  vector[n_obs] y_obs;              // Death vector
+  vector[n_cens] y_cens;            // Censored vector
+  int<lower = 0> k;                 // Number of covariates
+  matrix[n_obs, k] x_obs;           // Design matrix for deaths
+  matrix[n_cens, k] x_cens;         // Design matrix for censoring
+
+}
+
+transformed data {
+
+  real<lower = 0> tau_beta_0;       // Sd of intercept
+  real<lower = 0> tau_alpha;        // Sd alpha
+
+  tau_beta_0 = 10;
+  tau_alpha = 10;
+
+}
+"
+```
+
+## The model: parameters block
+\scriptsize
+```{r, echo = TRUE, results = "hide"}
+"
+parameters {
+
+  real<lower = 0> alpha;           // Alpha parameter on the log scale
+  real beta_0;                     // Intercept
+  vector[k] beta;                  // Coefficients of covariates
+
+}
+"
+```
+
+## The model: model block
+\scriptsize
+```{r, echo = TRUE, results = "hide"}
+"
+model {
+
+  // Linear predictors
+  vector[n_obs] eta_obs = beta_0 + x_obs * beta;
+  vector[n_cens] eta_cens = beta_0 + x_cens * beta;
+
+  // Define the priors
+  target += normal_lpdf(alpha | 0, tau_alpha) +
+            normal_lpdf(beta_0 | 0, tau_beta_0) +
+            normal_lpdf(beta | 0, 1);
+
+  // Define the likelihood
+  target += weibull_lpdf(y_obs | alpha, exp(-eta_obs/alpha)) +
+            weibull_lccdf(y_cens | alpha, exp(-eta_cens/alpha));
+
+}
+"
+```
+
+## Recover the parameters values
+```{r, fig.width = 9, fig.height = 5}
+recover_fake_weibull_centered
+```
+
+## Fit the model to the real data
+\begin{itemize}
+\setlength\itemsep{1em}
+  \item{If the fitted model is able to recover the true parameters
+        values it is possible to proceed by fitting the model to
+        real data}
+  \item{Prior Predictive checks can be very useful to question about
+        the correctness of the model}
+  \item{Before fitting the model to the real data, centering and scale
+        the covariates is useful to ease the sampling process}
+\end{itemize}
+
+Two steps are important to evaluate the robustness of the analysis:
+\begin{itemize}
+  \item{MCMC diagnostics}
+  \item{Posterior Predictive Checks}
+\end{itemize}
+
+
+## MCMC diagnostics: $R_{hat}$ and $ESS$
+```{r, fig.width = 10, fig.height = 6}
+r_hat_weibull <- rhat(model_list_surv$weibull)
+n_eff_weibull <- neff_ratio(model_list_surv$weibull)
+
+p1 <- mcmc_rhat(r_hat_weibull)
+p2 <- mcmc_neff(n_eff_weibull)
+
+ggpubr::ggarrange(
+  p1, p2, ncol = 2L, nrow = 1L
+)
+```
+
+## MCMC diagnostics: traceplot
+```{r, fig.width = 10, fig.height = 6}
+traceplot(
+  model_list_surv$weibull, 
+  pars = c("alpha", "beta_0", "beta"),
+  ncol = 3L
+)
+```
+
+## Posterior Predictive Checks (1)
+```{r, fig.width = 10, fig.height = 6}
+stan_model <- model_list_surv$weibull
+
+y_rep <- as.matrix(stan_model, pars = c("y_rep"))
+
+# Check if the replicated data makes sense with respect to
+# the observed data
+# Compare posterior with observed
+ppc_dens_overlay(y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ]) +
+  xlim(0, 50)
+
+# Greater simulated follow-up times seem to be frequent...
+```
+
+## Posterior Predictive Checks (2)
+```{r, fig.width = 10, fig.height = 4}
+# Compare some quantiles of follow-up times
+ppc_median <- ppc_stat(
+  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ], stat = "median"
+)
+
+# ... also by group of treatment
+ppc_median_grouped <- ppc_stat_grouped(
+  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
+  group = db_ovarian_scaled[["rx"]], stat = "median"
+)
+
+ggpubr::ggarrange(
+  ppc_median, ppc_median_grouped, ncol = 2L, nrow = 1L
+)
+```
+
+## Posterior Predictive Checks (3)
+```{r, fig.width = 10, fig.height = 4}
+first_quart <- function(x) quantile(x, probs = 0.25)
+third_quart <- function(x) quantile(x, probs = 0.75)
+
+ppc_first <- ppc_stat(
+  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
+  stat = "first_quart"
+)
+
+ppc_third <- ppc_stat(
+  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
+  stat = "third_quart"
+)
+
+ggpubr::ggarrange(
+  ppc_first, ppc_third, ncol = 2L, nrow = 1L
+)
+```
+
+## Revise the model
+
+\begin{itemize}
+  \item{The model predicts greater follow-up times than those observed
+        in the ovarian cancer data}
+  \item{Weibull distribution may not be the best one to model 
+        time-to-deaths of subjects with ovarian cancer}
+  \item{Different family distributions can be considered, e.g.
+        log-normal, gamma, ...}
+\end{itemize}
+
+## Log-normal (1)
+```{r, fig.width = 10, fig.height = 6}
+stan_model <- model_list_surv$lognormal
+
+y_rep <- as.matrix(stan_model, pars = c("y_rep"))
+
+# Check if the replicated data makes sense with respect to
+# the observed data
+# Compare posterior with observed
+ppc_dens_overlay(y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ]) +
+  xlim(0, 50)
+
+# Greater simulated follow-up times seem to be frequent...
+```
+
+## Log-normal (2)
+```{r, fig.width = 10, fig.height = 4}
+# Compare some quantiles of follow-up times
+ppc_median <- ppc_stat(
+  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ], stat = "median"
+)
+
+# ... also by group of treatment
+ppc_median_grouped <- ppc_stat_grouped(
+  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
+  group = db_ovarian_scaled[["rx"]], stat = "median"
+)
+
+ggpubr::ggarrange(
+  ppc_median, ppc_median_grouped, ncol = 2L, nrow = 1L
+)
+```
+
+## Log-normal (3)
+```{r, fig.width = 10, fig.height = 4}
+first_quart <- function(x) quantile(x, probs = 0.25)
+third_quart <- function(x) quantile(x, probs = 0.75)
+
+ppc_first <- ppc_stat(
+  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
+  stat = "first_quart"
+)
+
+ppc_third <- ppc_stat(
+  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
+  stat = "third_quart"
+)
+
+ggpubr::ggarrange(
+  ppc_first, ppc_third, ncol = 2L, nrow = 1L
+)
+```
+
+## Gamma (1)
+```{r, fig.width = 10, fig.height = 6}
+stan_model <- model_list_surv$lognormal
+
+y_rep <- as.matrix(stan_model, pars = c("y_rep"))
+
+# Check if the replicated data makes sense with respect to
+# the observed data
+# Compare posterior with observed
+ppc_dens_overlay(y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ]) +
+  xlim(0, 50)
+
+# Greater simulated follow-up times seem to be frequent...
+```
+
+## Gamma (2)
+```{r, fig.width = 10, fig.height = 4}
+# Compare some quantiles of follow-up times
+ppc_median <- ppc_stat(
+  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ], stat = "median"
+)
+
+# ... also by group of treatment
+ppc_median_grouped <- ppc_stat_grouped(
+  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
+  group = db_ovarian_scaled[["rx"]], stat = "median"
+)
+
+ggpubr::ggarrange(
+  ppc_median, ppc_median_grouped, ncol = 2L, nrow = 1L
+)
+```
+
+## Gamma (3)
+```{r, fig.width = 10, fig.height = 4}
+first_quart <- function(x) quantile(x, probs = 0.25)
+third_quart <- function(x) quantile(x, probs = 0.75)
+
+ppc_first <- ppc_stat(
+  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
+  stat = "first_quart"
+)
+
+ppc_third <- ppc_stat(
+  y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ],
+  stat = "third_quart"
+)
+
+ggpubr::ggarrange(
+  ppc_first, ppc_third, ncol = 2L, nrow = 1L
+)
+```
+
+## Compare the models (1)
+\begin{itemize}
+\setlength\itemsep{1em}
+  \item{None of the models seems to greatly improve the fitting of the
+        data}
+  \item{Models can be compared by using leave-one-out cross-validation
+        (LOO-CV)}
+  \item{Expected log predictive density (ELPD) computed with LOO-CV
+        can be used to evaluate which model has a better fit}
+  \item{Predictive weights can be assigned to each model by using
+        Stacking, Pseudo bayesian-model-averaging (Pseudo-BMA)}
+  \item{Higher ELPD and predictive weights suggest better 
+        predictive performances}
+\end{itemize}
+
+## Compare the models (2)
+\scriptsize
+```{r}
+loo_comp <- compare(x = loo_list_surv) %>% 
+  tidy() %>% 
+  rename(model = .rownames) %>% 
+  dplyr::select(model:se_elpd_loo) %>% 
+  mutate_at(vars(elpd_diff:se_elpd_loo), funs(round(., 3L)))
+
+weights_comp <- data_frame(
+  model = names(stacking_weights_surv),
+  stacking = stacking_weights_surv,
+  pseudo_bma = pseudo_bma_surv,
+  pseudo_bma_bb = pseudo_bma_bb_surv
+) %>% 
+  mutate_at(vars(stacking:pseudo_bma_bb), funs(round(., 3L)))
+
+kable(
+  loo_comp, digits = 2L,
+  caption = "Comparison of ELPD of the fitted models."
+)
+
+kable(
+  weights_comp, digits = 2L,
+  caption = "Model comparison with Stacking, Pseudo-BMA and 
+             Pseudo-BMA with Bayesian Bootstrap."
+)
+```
+
+## Parameters of the model (1)
+```{r, fig.width = 10, fig.height = 6}
+coef_lognormal <- as.data.frame(
+  model_list_surv$lognormal, pars = c("sigma", "beta_0", "beta")
+) %>%
+  setNames(
+    object = .,
+    nm = c(
+      "sigma", "intercept", "age", "residual_disease",
+      "ecog_perf", "treatment"
+    )
+  )
+
+mcmc_intervals(coef_lognormal)
+```
+
+## Parameters of the model (2)
+```{r, fig.width = 10, fig.height = 6}
+mcmc_areas(coef_lognormal)
+```
+
+
+## Posterior predictive survival curves
+```{r, fig.width = 9, fig.height = 6}
+lognormal_survplot
+```
+
+# Logistic Regression Case Study
+
+
+
+
+
+

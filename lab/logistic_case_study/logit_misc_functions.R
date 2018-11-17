@@ -104,19 +104,38 @@ model_comparison_loo <- function(stan_fit){
 
 }
 
+# Compute relative survival lognormal ----------------------------------
+lognorm_surv <- function(time, sigma) {
+
+  assertive::is_non_negative(time)
+  assertive::is_positive(sigma)
+
+  1 - stats::pnorm(q = log(time)/sigma)
+
+}
+
 # Predictions survival -------------------------------------------------
 post_pred_surv <- function(pred_df, time_fu_draw) {
 
-  pred_surv_df <- cbind(pred_df, time_fu_draw)
+  sigma <- time_fu_draw[["sigma"]]
 
-  surv_obj <- survfit(
-    Surv(time_fu_draw, fustat) ~ rx, data = pred_surv_df
-  )
+  time_event <- time_fu_draw %>%
+    dplyr::select(contains("y_pred")) %>%
+    t() %>%
+    as_data_frame() %>%
+    .[[1]]
 
-  data_frame(
-    id_subject = 1:nrow(pred_surv_df),
-    treatment = pred_surv_df$rx, status = pred_surv_df$fustat,
-    time_fu = surv_obj$time, surv = surv_obj$surv
+  pred_surv_df <- cbind(pred_df, time_fu_draw) %>%
+    dplyr::mutate(
+      time_to_event = time_event,
+      fustat = if_else(time_to_event < time_stop, 1, 0),
+      futime = if_else(fustat == 1, time_to_event, time_stop)
+    )
+
+  fu_time <- pred_surv_df[["futime"]]
+
+  map_dbl(
+    .x = fu_time, ~ lognorm_surv(time = .x, sigma = sigma)
   )
 
 }

@@ -11,10 +11,9 @@ data {
   matrix[n_cens, k] x_cens;         // Design matrix for censoring
 
   // New observations
-  int<lower = 0> n_obs_new;             // Number of deaths
-  int<lower = 0> n_cens_new;            // Number of censored
-  matrix[n_obs_new, k] x_obs_new;       // Design matrix for deaths
-  matrix[n_cens_new, k] x_cens_new;     // Design matrix for censoring
+  int<lower = 0> n_new;             // Number new observations
+  matrix[n_new, k] x_new;           // New design matrix
+  vector[n_new] times;              // New times
 
 }
 
@@ -48,7 +47,7 @@ generated quantities {
   // Replicated data, log predictive density and predicted data
   vector[n_obs + n_cens] y_rep;
   vector[n_obs + n_cens] log_lik;
-  vector[n_obs_new + n_cens_new] y_pred;
+  vector[n_new] surv_pred;
 
   // Simulations for deaths
   for(i in 1:n_obs) {
@@ -59,15 +58,6 @@ generated quantities {
     y_rep[i] = lognormal_rng(eta_obs_rep, sigma);
 
     log_lik[i] = lognormal_lpdf(y_obs[i] | eta_obs_rep, sigma);
-
-  }
-
-  for(i in 1:n_obs_new) {
-
-    // Linear predictor deaths
-    real eta_obs_pred = beta_0 + x_obs_new[i] * beta;
-
-    y_pred[i] = lognormal_rng(eta_obs_pred, sigma);
 
   }
 
@@ -85,12 +75,13 @@ generated quantities {
 
   }
 
-  for(i in 1:n_cens_new) {
+  // Simulated follow-up time for each new observation
+  for(i in 1:n_new) {
 
     // Linear predictor deaths
-    real eta_cens_pred = beta_0 + x_cens_new[i] * beta;
+    real eta_pred = beta_0 + x_new[i] * beta;
 
-    y_pred[n_obs_new + i] = lognormal_rng(eta_cens_pred, sigma);
+    surv_pred[i] = 1 - normal_cdf(log(times[i]), eta_pred, sigma);
 
   }
 
