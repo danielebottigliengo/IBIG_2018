@@ -132,7 +132,7 @@
 \usepackage{enumerate}
 \hypersetup{ colorlinks = true, linkcolor = blue, filecolor = magenta, urlcolor = cyan,}
 
-\title{\Large\textbf{Introduction to Bayesian computation and application to regression models and survival analysis}}
+\title{\Large\textbf{Introduction to Bayesian Computation and Application to Regression Models and Survival Analysis}}
 \subtitle{\large\textbf{\textrm{IBIG 2018}}}
 \author{\centering\underline{\textbf{Daniele Bottigliengo}}\thanks{\tiny Unit of Biostatistics, Epidemiology and Public Health, Department of \newline Cardiac, Thoracic, Vascular Sciences and Public Health, University of Padua, Italy}}
 \date{\centering\emph{Padova, Italy, November 22, 2018}}
@@ -146,16 +146,19 @@ Study}\label{survival-analysis-case-study}
 \begin{frame}{Survival Ovarian Cancer}
 
 \begin{itemize}
-\setlength\itemsep{1em}
-  \item{Randomized trial comparing treatment of patients with advanced
-        ovarian carcinoma (stages $IIIB$ and $IV$)}
-  \item{Two groups of patients:}
+\item
+  Randomized trial comparing treatment of patients with advanced ovarian
+  carcinoma (stages \(IIIB\) and \(IV\)) (Edmonson et al. 1979)
+\item
+  Two groups of patients:
+
   \begin{itemize}
-    \item{Cyclophosphamide alone ($1 \> g/m^{2}$)}
-    \item{Cyclophosphamide ($500 \> \mu g/m^{2}$) plus Adriamycin 
-        ($40 \> \mu g/m2$)}
-  \end{itemize}
-\item{Intravenous (IV) injection every $3$ weeks}
+  \item{Cyclophosphamide alone ($1 \> g/m^{2}$)}
+  \item{Cyclophosphamide ($500 \> \mu g/m^{2}$) plus Adriamycin 
+      ($40 \> \mu g/m2$)}
+    \end{itemize}
+\item
+  Intravenous (IV) injection every \(3\) weeks
 \end{itemize}
 
 \end{frame}
@@ -170,11 +173,11 @@ Study}\label{survival-analysis-case-study}
     \item{Age}
     \item{Presence of residual disease}
     \item{ECOG performance}
-    \item{Median follow-up time in the Cyclophosphamide group: 
-          $448$ days}
-    \item{Median follow-up time in the Cyclophosphamide plus 
-          Adriamycin $563$ days}
   \end{itemize}
+\item{Median follow-up time in the Cyclophosphamide group: 
+      $448$ days}
+\item{Median follow-up time in the Cyclophosphamide plus 
+      Adriamycin $563$ days}  
 \item{$12$ patients died during the study and $14$ were right-censored}
 \end{itemize}
 
@@ -226,12 +229,12 @@ ecog\_performance\tabularnewline
 \begin{frame}{Survival Model}
 
 Weibull parametric proportional hazard model: \[
-  f \left( t \vert \alpha, \sigma \right) = \frac{\alpha}{\sigma} \left( \frac{t}{\sigma}\right)^{\alpha - 1} e ^{ - \left( \frac{t}{\sigma} \right) }
+  f \left( t \vert \alpha, \sigma \right) = \frac{\alpha}{\sigma} \left( \frac{t}{\sigma}\right)^{\alpha - 1} e ^{ - \left( \frac{t}{\sigma} \right)^{\alpha} }
   \] where:
 
 \begin{itemize}
  \item{$\alpha$ is the shape parameter}
- \item{$\sigma$ is the scale parameter, where $\sigma = e ^{ - \left( \frac{\eta}{\alpha} \right) }$}.
+ \item{$\sigma$ is the scale parameter defined as $\sigma = e ^{ - \left( \frac{\eta}{\alpha} \right) }$}.
  \item{$\eta$ is the linear predictor and it can be expressed as 
        function of some covariates}
 \end{itemize}
@@ -244,6 +247,8 @@ Weibull parametric proportional hazard model: \[
   \item{Starting point of model fitting}
   \item{Check if the model makes sense}
 \end{itemize}
+
+How to proceed:
 
 \begin{enumerate}
   \item{Simulate fake data from the prior predictive distributions}
@@ -350,7 +355,7 @@ Weibull parametric proportional hazard model: \[
   \item{If the fitted model is able to recover the true parameters
         values it is possible to proceed by fitting the model to
         real data}
-  \item{Prior Predictive checks can be very useful to question about
+  \item{Prior Predictive checks can be very useful to question the
         the correctness of the model}
   \item{Before fitting the model to the real data, centering and scale
         the covariates is useful to ease the sampling process}
@@ -448,8 +453,6 @@ Two steps are important to evaluate the robustness of the analysis:
 
 \begin{itemize}
 \setlength\itemsep{1em}
-  \item{None of the models seems to greatly improve the fitting of the
-        data}
   \item{Models can be compared by using leave-one-out cross-validation
         (LOO-CV)}
   \item{Expected log predictive density (ELPD) computed with LOO-CV
@@ -493,9 +496,9 @@ model & stacking & pseudo\_bma & pseudo\_bma\_bb\tabularnewline
 model & stacking & pseudo\_bma & pseudo\_bma\_bb\tabularnewline
 \midrule
 \endhead
-weibull & 0 & 0.014 & 0.049\tabularnewline
-lognormal & 1 & 0.772 & 0.734\tabularnewline
-gamma & 0 & 0.214 & 0.217\tabularnewline
+weibull & 0 & 0.014 & 0.042\tabularnewline
+lognormal & 1 & 0.772 & 0.742\tabularnewline
+gamma & 0 & 0.214 & 0.216\tabularnewline
 \bottomrule
 \end{longtable}
 
@@ -516,6 +519,260 @@ gamma & 0 & 0.214 & 0.217\tabularnewline
 \begin{frame}{Posterior predictive survival curves}
 
 \includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-24-1.pdf}
+
+\end{frame}
+
+\section{Logistic Regression Case
+Study}\label{logistic-regression-case-study}
+
+\begin{frame}{Influenza vaccine case study}
+
+\begin{itemize}
+\item
+  Hospitalized adults with acute respiratory disease tested for
+  influenza with laboratory test (RT-PCR) (Talbot et al. 2013)
+\item
+  The aim of the study was to estimate vaccine effectiveness in reducing
+  risk of influenza
+\item
+  Case-positive, control-negative study design
+\item
+  Low prevalence of influenza (\(\approx 10 \%\))
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{The data}
+
+\begin{itemize}
+\item
+  Data were simulated from the information provided by \emph{Chen et al.
+  (2016)} (Chen et al., n.d.):
+\item
+  \(200\) subjects
+\item
+  \(19\) with positive influenza status and \(119\) with verified
+  vaccination status
+\item
+  \(13\) confounders: race, home oxygen use, current smoking status,
+  diabetes mellitus, asthma chronic obstructive pulmonary disease,
+  chronic heart disease, immunosuppression, chronic liver or kidney
+  disease, asplenia, and other type of disease
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{The goal}
+
+\begin{itemize}
+\item
+  With low number of cases and high number of covariates a standard
+  logistic regression would overfit the data
+\item
+  In their study, \emph{Chen et al. (2016)} showed the benefits of
+  penalizing maximum likelihood estimates (MLE) of all the terms in the
+  model but the one related to the vaccination status
+\item
+  Control both for overfitting and bias in the exposure estimate
+\item
+  How can prior distributions help in such situations?
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Non-informative uniform priors}
+
+\end{frame}
+
+\begin{frame}{Non-informative uniform priors}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-25-1.pdf}
+
+\end{frame}
+
+\begin{frame}{Non-informative uniform priors}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-26-1.pdf}
+
+\end{frame}
+
+\begin{frame}{Non-informative uniform priors}
+
+\begin{itemize}
+\item
+  Coefficients estimates are too extreme to be plausible
+\item
+  The algorithm did not perform a good sample of the posterior:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Many divergent transitions
+  \item
+    Low \(R_{hat}\) and \(ESS\) values
+  \end{itemize}
+\item
+  The model likely overfitted the data
+\item
+  Priors that allow for less extreme values may help
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Vague priors: \(N \sim \left( 0, 100 \right)\)}
+
+\end{frame}
+
+\begin{frame}{Vague priors: \(N \sim \left( 0, 100 \right)\)}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-27-1.pdf}
+
+\end{frame}
+
+\begin{frame}{Vague priors: \(N \sim \left( 0, 100 \right)\)}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-28-1.pdf}
+
+\end{frame}
+
+\begin{frame}{\(Cauchy \sim \left( 0, 2.5 \right)\)}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-29-1.pdf}
+
+\end{frame}
+
+\begin{frame}{\(Cauchy \sim \left( 0, 2.5 \right)\)}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-30-1.pdf}
+
+\end{frame}
+
+\begin{frame}{Weakly informative priors}
+
+\begin{itemize}
+\item
+  \(Cauchy \sim \left( 0, 2.5 \right)\) improved the fit, but
+  overfitting may be still present given the high values of coefficients
+\item
+  Weakly informative priors may help in such situations to regularize
+  inference by shrinking regression coefficients to \(0\)
+\item
+  The idea is to give more probability to values near the \(0\) while
+  giving at the same time some chances to higher values
+\item
+  If covariates are roughly on unit scale,
+  \(t-student \sim \left(df, 0, 1 \right)\) with \(3 \leq df \leq 7\) is
+  a reasonable choice for logistic regression models
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{T-student priors: coefficients}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-31-1.pdf}
+
+\end{frame}
+
+\begin{frame}{T-student priors: posterior checks (1)}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-32-1.pdf}
+
+\end{frame}
+
+\begin{frame}{T-student priors: posterior checks (2)}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-33-1.pdf}
+
+\end{frame}
+
+\begin{frame}{T-student priors: model comparison}
+
+\begin{longtable}[]{@{}lrrr@{}}
+\caption{Model comparison with Stacking, Pseudo-BMA and Pseudo-BMA with
+Bayesian Bootstrap.}\tabularnewline
+\toprule
+model & stacking & pseudo\_bma & pseudo\_bma\_bb\tabularnewline
+\midrule
+\endfirsthead
+\toprule
+model & stacking & pseudo\_bma & pseudo\_bma\_bb\tabularnewline
+\midrule
+\endhead
+student\_t\_3 & 0.579 & 0.333 & 0.307\tabularnewline
+student\_t\_7 & 0.001 & 0.179 & 0.202\tabularnewline
+student\_t\_3\_unp & 0.419 & 0.300 & 0.320\tabularnewline
+student\_t\_7\_unp & 0.000 & 0.188 & 0.171\tabularnewline
+\bottomrule
+\end{longtable}
+
+\end{frame}
+
+\begin{frame}{Vaccine effectiveness}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-35-1.pdf}
+
+\end{frame}
+
+\begin{frame}{Additional information}
+
+\begin{itemize}
+\item
+  Stan's website at \url{http://mc-stan.org/}. Here you can find the
+  reference manual, videos, tutorials, case studies and so on
+\item
+  Here's a list of R packages that interface with Stan:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \textbf{rstan}
+  \item
+    \textbf{bayesplot}
+  \item
+    \textbf{loo}
+  \item
+    \textbf{brms}
+  \item
+    \textbf{rstanarm}
+  \item
+    \textbf{trialr}
+  \item
+    \textbf{RBesT}
+  \item
+    \textbf{survHE}
+  \end{itemize}
+\item
+  The slides of the presentation, the R and Stan codes used for the case
+  studies are at \url{https://github.com/danielebottigliengo/IBIG_2018}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{References}
+
+\footnotesize
+
+\hypertarget{refs}{}
+\hypertarget{ref-chen_2016}{}
+Chen, Qingxia, Hui Nian, Yuwei Zhu, H. Keipp Talbot, Marie R. Griffin,
+and Frank E. Harrell. n.d. ``Too Many Covariates and Too Few Cases? -- A
+Comparative Study.'' \emph{Statistics in Medicine} 35 (25): 4546--58.
+doi:\href{https://doi.org/10.1002/sim.7021}{10.1002/sim.7021}.
+
+\hypertarget{ref-edmonson_1979}{}
+Edmonson, J. H., T. R. Fleming, D. G. Decker, G. D. Malkasian, E. O.
+Jorgensen, J. A. Jefferies, M. J. Webb, and L. K. Kvols. 1979.
+``Different Chemotherapeutic Sensitivities and Host Factors Affecting
+Prognosis in Advanced Ovarian Carcinoma Versus Minimal Residual
+Disease.'' \emph{Cancer Treatment Reports} 63 (2): 241--47.
+
+\hypertarget{ref-talbot_2013}{}
+Talbot, H. Keipp, Yuwei Zhu, Qingxia Chen, John V. Williams, Mark G.
+Thompson, and Marie R. Griffin. 2013. ``Effectiveness of Influenza
+Vaccine for Preventing Laboratory-Confirmed Influenza Hospitalizations
+in Adults, 2011--2012 Influenza Season.'' \emph{Clinical Infectious
+Diseases} 56 (12): 1774--7.
+doi:\href{https://doi.org/10.1093/cid/cit124}{10.1093/cid/cit124}.
 
 \end{frame}
 

@@ -1,5 +1,5 @@
 ---
-title: "\\Large\\textbf{Introduction to Bayesian computation and application to regression models and survival analysis}"
+title: "\\Large\\textbf{Introduction to Bayesian Computation and Application to Regression Models and Survival Analysis}"
 subtitle: "\\large\\textbf{\\textrm{IBIG 2018}}"
 author: "\\centering\\underline{\\textbf{Daniele Bottigliengo}}\\thanks{\\tiny Unit of Biostatistics, Epidemiology and Public Health, Department of \\newline Cardiac, Thoracic, Vascular Sciences and Public Health, University of Padua, Italy}"
 date: "\\centering\\emph{Padova, Italy, November 22, 2018}"
@@ -31,6 +31,8 @@ output:
 classoption: [a4paper]
 biblio-style:  alphabetic
 biblio-citestyle: authoryear
+bibliography:
+   - bibliography_lab.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -55,6 +57,8 @@ library(broom)
   
 load(here::here("lab/logistic_case_study/logit_analysis.rda"))
 load(here::here("lab/survival_case_study/survival_analysis.rda"))
+load(here::here("data/logistic_case_study.rda"))
+
 
 # Rescale covariates for computational ease
 db_ovarian <- ovarian
@@ -89,18 +93,17 @@ ovarian_scaled_list <- list(
 
 ## Survival Ovarian Cancer
 
-\begin{itemize}
-\setlength\itemsep{1em}
-  \item{Randomized trial comparing treatment of patients with advanced
-        ovarian carcinoma (stages $IIIB$ and $IV$)}
-  \item{Two groups of patients:}
+- Randomized trial comparing treatment of patients with advanced
+  ovarian carcinoma (stages $IIIB$ and $IV$) [@edmonson_1979]
+  
+- Two groups of patients:
   \begin{itemize}
     \item{Cyclophosphamide alone ($1 \> g/m^{2}$)}
     \item{Cyclophosphamide ($500 \> \mu g/m^{2}$) plus Adriamycin 
         ($40 \> \mu g/m2$)}
   \end{itemize}
-\item{Intravenous (IV) injection every $3$ weeks}
-\end{itemize}
+  
+- Intravenous (IV) injection every $3$ weeks
 
 ## The dataset (1)
 \begin{itemize}
@@ -111,11 +114,11 @@ ovarian_scaled_list <- list(
     \item{Age}
     \item{Presence of residual disease}
     \item{ECOG performance}
-    \item{Median follow-up time in the Cyclophosphamide group: 
-          $448$ days}
-    \item{Median follow-up time in the Cyclophosphamide plus 
-          Adriamycin $563$ days}
   \end{itemize}
+\item{Median follow-up time in the Cyclophosphamide group: 
+      $448$ days}
+\item{Median follow-up time in the Cyclophosphamide plus 
+      Adriamycin $563$ days}  
 \item{$12$ patients died during the study and $14$ were right-censored}
 \end{itemize}
 
@@ -162,13 +165,13 @@ p_ecog_ps
 
 Weibull parametric proportional hazard model:
   $$
-  f \left( t \vert \alpha, \sigma \right) = \frac{\alpha}{\sigma} \left( \frac{t}{\sigma}\right)^{\alpha - 1} e ^{ - \left( \frac{t}{\sigma} \right) }
+  f \left( t \vert \alpha, \sigma \right) = \frac{\alpha}{\sigma} \left( \frac{t}{\sigma}\right)^{\alpha - 1} e ^{ - \left( \frac{t}{\sigma} \right)^{\alpha} }
   $$
 where:
 
 \begin{itemize}
  \item{$\alpha$ is the shape parameter}
- \item{$\sigma$ is the scale parameter, where $\sigma = e ^{ - \left( \frac{\eta}{\alpha} \right) }$}.
+ \item{$\sigma$ is the scale parameter defined as $\sigma = e ^{ - \left( \frac{\eta}{\alpha} \right) }$}.
  \item{$\eta$ is the linear predictor and it can be expressed as 
        function of some covariates}
 \end{itemize}
@@ -179,6 +182,7 @@ where:
   \item{Check if the model makes sense}
 \end{itemize}
 
+How to proceed:
 \begin{enumerate}
   \item{Simulate fake data from the prior predictive distributions}
   \item{Fit the model to the simulated data}
@@ -262,7 +266,7 @@ recover_fake_weibull_centered
   \item{If the fitted model is able to recover the true parameters
         values it is possible to proceed by fitting the model to
         real data}
-  \item{Prior Predictive checks can be very useful to question about
+  \item{Prior Predictive checks can be very useful to question the
         the correctness of the model}
   \item{Before fitting the model to the real data, centering and scale
         the covariates is useful to ease the sampling process}
@@ -470,8 +474,6 @@ ggpubr::ggarrange(
 ## Compare the models (1)
 \begin{itemize}
 \setlength\itemsep{1em}
-  \item{None of the models seems to greatly improve the fitting of the
-        data}
   \item{Models can be compared by using leave-one-out cross-validation
         (LOO-CV)}
   \item{Expected log predictive density (ELPD) computed with LOO-CV
@@ -534,14 +536,361 @@ mcmc_areas(coef_lognormal)
 
 
 ## Posterior predictive survival curves
-```{r, fig.width = 9, fig.height = 6}
+```{r, fig.width = 10, fig.height = 5}
 lognormal_survplot
 ```
 
 # Logistic Regression Case Study
 
 
+## Influenza vaccine case study
+- Hospitalized adults with acute respiratory disease tested for 
+  influenza with laboratory test (RT-PCR) [@talbot_2013]
+  
+
+- The aim of the study was to estimate vaccine effectiveness in reducing
+  risk of influenza
+  
+  
+- Case-positive, control-negative study design
 
 
+- Low prevalence of influenza ($\approx 10 \%$)
+
+## The data
+- Data were simulated from the information provided by 
+  _Chen et al. (2016)_ [@chen_2016]:
+  
+  
+- $200$ subjects
 
 
+- $19$ with positive influenza status and $119$ with verified
+  vaccination status
+  
+      
+- $13$ confounders: race, home oxygen use, current smoking status,
+  diabetes mellitus, asthma chronic obstructive pulmonary disease,
+  chronic heart disease, immunosuppression,
+  chronic liver or kidney disease, asplenia, and other type of disease
+
+## The goal
+
+- With low number of cases and high number of covariates a standard
+  logistic regression would overfit the data
+  
+  
+- In their study, _Chen et al. (2016)_ showed the benefits of penalizing
+  maximum likelihood estimates (MLE) of all the terms in the model but
+  the one related to the vaccination status
+  
+  
+- Control both for overfitting and bias in the exposure estimate
+
+
+- How can prior distributions help in such situations?
+
+## Non-informative uniform priors 
+
+## Non-informative uniform priors
+```{r, fig.width = 10, fig.height = 5}
+model_list_logit <- model_list %>% 
+  setNames(
+    object = ., nm = c(
+      "uniform", "vague", "cauchy", "student_t_3", "student_t_7",
+      "student_t_3_unp", "student_t_7_unp"
+    )
+  )
+
+color_scheme_set("red")
+mcmc_hist(post_coefs_uniform)
+```
+
+## Non-informative uniform priors
+```{r, fig.width = 10, fig.height = 5}
+rhats <- rhat(model_list_logit$uniform, pars = c("alpha", "beta"))
+mcmc_rhat(rhats)
+```
+
+## Non-informative uniform priors
+- Coefficients estimates are too extreme to be plausible
+
+
+- The algorithm did not perform a good sample of the posterior:
+    - Many divergent transitions
+    - Low $R_{hat}$ and $ESS$ values
+    
+
+- The model likely overfitted the data
+
+
+- Priors that allow for less extreme values may help
+
+## Vague priors: $N \sim \left( 0, 100 \right)$
+
+## Vague priors: $N \sim \left( 0, 100 \right)$
+```{r, fig.width = 10, fig.height = 5}
+mcmc_hist(post_coefs_vague)
+```
+
+## Vague priors: $N \sim \left( 0, 100 \right)$
+```{r, fig.width = 10, fig.height = 5}
+rhats <- rhat(model_list_logit$vague, pars = c("alpha", "beta"))
+mcmc_rhat(rhats)
+```
+
+## $Cauchy \sim \left( 0, 2.5 \right)$
+```{r, fig.width = 10, fig.height = 5}
+mcmc_hist(post_coefs_cauchy)
+```
+
+## $Cauchy \sim \left( 0, 2.5 \right)$
+```{r, fig.width = 10, fig.height = 5}
+rhats <- rhat(model_list_logit$cauchy, pars = c("alpha", "beta"))
+mcmc_rhat(rhats)
+```
+
+## Weakly informative priors
+- $Cauchy \sim \left( 0, 2.5 \right)$ improved the fit, but 
+  overfitting may be still present given the high values of coefficients
+  
+  
+- Weakly informative priors may help in such situations to regularize
+  inference by shrinking regression coefficients to $0$
+  
+  
+- The idea is to give more probability to values near the $0$ while
+  giving at the same time some chances to higher values
+  
+  
+- If covariates are roughly on unit scale, 
+  $t-student \sim \left(df, 0, 1 \right)$ with $3 \leq df \leq 7$ is
+  a reasonable choice for logistic regression models
+  
+## T-student priors: coefficients
+```{r, fig.height = 6, fig.width = 10}
+coef_student_3 <- post_coefs_student_3 %>% 
+  map_df(
+    .x = .,
+    ~ data_frame(
+      post_median = median(.x), 
+      lower_70 = quantile(.x, probs = 0.15), 
+      upper_70 = quantile(.x, probs = 0.85),
+      lower_90 = quantile(.x, probs = 0.05),
+      upper_90 = quantile(.x, probs = 0.95)
+    )
+  ) %>% 
+  mutate(
+    term = names(post_coefs_student_3),
+    prior = "3 df"
+  )
+
+coef_student_7 <- post_coefs_student_7 %>% 
+  map_df(
+    .x = .,
+    ~ data_frame(
+      post_median = median(.x), 
+      lower_70 = quantile(.x, probs = 0.15), 
+      upper_70 = quantile(.x, probs = 0.85),
+      lower_90 = quantile(.x, probs = 0.05),
+      upper_90 = quantile(.x, probs = 0.95)
+    )
+  ) %>% 
+  mutate(
+    term = names(post_coefs_student_7),
+    prior = "7 df"
+  )
+
+post_coef_stud <- bind_rows(coef_student_3, coef_student_7) %>% 
+  mutate(
+    term = factor(term, levels = rev(names(post_coefs_student_7)))
+  )
+
+ggplot(
+  data = post_coef_stud, 
+  mapping = aes(x = post_median, y = term, colour = prior, fill = prior)
+) + 
+  geom_point(
+    size = 1.5, 
+    position = ggstance::position_dodgev(height = 0.4)
+  ) +
+  geom_errorbarh(
+    mapping = aes(xmin = lower_70, xmax = upper_70),
+    size = 0.9, position = ggstance::position_dodgev(height = 0.4),
+    height = 0
+  ) +
+  geom_errorbarh(
+    mapping = aes(xmin = lower_90, xmax = upper_90),
+    size = 0.7, position = ggstance::position_dodgev(height = 0.4),
+    height = 0
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_fill_manual(
+    name = "T-student prior",
+    values = c("dodgerblue2", "firebrick4"),
+    labels = c("3 df", "7 df")
+  ) +
+  scale_colour_manual(
+    name = "T-student prior",
+    values = c("dodgerblue2", "firebrick4"),
+    labels = c("3 df", "7 df")
+  ) +
+  xlab("Posterior estimates") +
+  ylab("Model's coefficients") +
+  scale_x_continuous(breaks = seq(from = -6, to = 6, by = 1)) + 
+  theme_classic()
+```
+
+## T-student priors: posterior checks (1)
+```{r, fig.height = 6, fig.width = 10}
+y <- if_else(db_logit$influenza == "Yes", 1, 0)
+yrep_3 <- as.matrix(model_list_logit$student_t_3, pars = "y_rep")
+
+yrep_7 <- as.matrix(
+  model_list_logit$student_t_7, pars = c("y_rep")
+)
+
+prop_zero <- function(x) mean(x == 0)
+prop_one <- function(x) mean(x == 1)
+
+prop_zero_3 <- ppc_stat(
+  y = y, yrep = yrep_3[1:200,], stat = "prop_zero"
+) +
+  ggtitle("3 df")
+
+prop_zero_7 <- ppc_stat(
+  y = y, yrep = yrep_7[1:200,], stat = "prop_zero"
+) +
+  ggtitle("7 df")
+
+prop_one_3 <- ppc_stat(
+  y = y, yrep = yrep_3[1:200,], stat = "prop_one"
+) +
+  ggtitle("3 df")
+
+prop_one_7 <- ppc_stat(
+  y = y, yrep = yrep_7[1:200,], stat = "prop_one"
+) +
+  ggtitle("7 df")
+
+ggpubr::ggarrange(
+  prop_zero_3, prop_zero_7, ncol = 2L, nrow = 1L
+)
+```
+
+## T-student priors: posterior checks (2)
+```{r, fig.height = 6, fig.width = 10}
+ggpubr::ggarrange(
+  prop_one_3, prop_one_7, ncol = 2L, nrow = 1L
+)
+```
+
+## T-student priors: model comparison
+```{r}
+weights_comp_logit <- data_frame(
+  model = names(pseudo_bma),
+  stacking = stacking_weights,
+  pseudo_bma = pseudo_bma,
+  pseudo_bma_bb = pseudo_bma_bb
+) %>% 
+  mutate_at(vars(stacking:pseudo_bma_bb), funs(round(., 3L)))
+
+
+kable(
+  weights_comp_logit, digits = 2L,
+  caption = "Model comparison with Stacking, Pseudo-BMA and 
+             Pseudo-BMA with Bayesian Bootstrap."
+)
+```
+
+## Vaccine effectiveness
+```{r, fig.height = 6, fig.width = 10}
+vaccine_eff_fun <- function(x) (1 - exp(x))
+
+list_post_coef <- list(
+  post_coefs_uniform, post_coefs_vague, post_coefs_cauchy,
+  post_coefs_student_3, post_coefs_student_7, post_coefs_student_3_unp,
+  post_coefs_student_7_unp
+) 
+
+vaccine_eff_df <- map(
+  .x = list_post_coef,
+  ~ .x[["vaccine"]] %>% 
+    vaccine_eff_fun(x = .)
+) %>% 
+  setNames(
+    object = ., nm = c(
+      "uniform", "vague", "cauchy", "student_3", "student_7",
+      "student_3_unp", "student_7_unp"
+    )
+  ) %>% 
+  as_data_frame() %>% 
+  map_df(
+    .x = .,
+    ~ data_frame(
+      post_median = median(.x), 
+      lower_70 = quantile(.x, probs = 0.15), 
+      upper_70 = quantile(.x, probs = 0.85),
+      lower_90 = quantile(.x, probs = 0.05),
+      upper_90 = quantile(.x, probs = 0.95)
+    )
+  ) %>% 
+  mutate(
+    prior = factor(
+      c(
+      "uniform", "vague", "cauchy", "student_3", "student_7",
+      "student_3_unp", "student_7_unp"
+    ), levels = c(
+      "uniform", "vague", "cauchy", "student_3", "student_7",
+      "student_3_unp", "student_7_unp"
+    )
+    )
+  )
+
+ggplot(
+  data = vaccine_eff_df,
+  mapping = aes(
+    x = post_median, y = prior
+  )
+) + 
+  geom_point(
+    size = 2, 
+    position = ggstance::position_dodgev(height = 0.4), 
+    colour = "forestgreen"
+  ) +
+  geom_errorbarh(
+    mapping = aes(xmin = lower_70, xmax = upper_70),
+    size = 1.6, position = ggstance::position_dodgev(height = 0.4),
+    colour = "forestgreen", height = 0
+  ) +
+  geom_errorbarh(
+    mapping = aes(xmin = lower_90, xmax = upper_90),
+    size = 1, position = ggstance::position_dodgev(height = 0.4),
+    height = 0, colour = "forestgreen"
+  ) +
+  xlab("(1 - OR) x 100 posterior estimates") +
+  ylab("Model's priors") + 
+  theme_classic()
+```
+
+## Additional information  
+- Stan's website at [http://mc-stan.org/](http://mc-stan.org/). Here
+  you can find the reference manual, videos, tutorials, case studies and
+  so on
+  
+- Here's a list of R packages that interface with Stan:
+    - __rstan__
+    - __bayesplot__
+    - __loo__ 
+    - __brms__ 
+    - __rstanarm__ 
+    - __trialr__ 
+    - __RBesT__ 
+    - __survHE__
+
+- The slides of the presentation, the R and Stan codes used for the
+  case studies are at 
+  [https://github.com/danielebottigliengo/IBIG_2018](https://github.com/danielebottigliengo/IBIG_2018)
+  
+## References
+\footnotesize

@@ -24,7 +24,7 @@ model {
   // Priors: stan uses uniform priors by default
   target += cauchy_lpdf(alpha |0, 10) +
             student_t_lpdf(beta[1:K-1] |7, 0, 1) +
-            student_t_lpdf(beta[K] |1, 0, 10);
+            student_t_lpdf(beta[K] |7, 0, 10);
 
   // Likelihood
   target += bernoulli_logit_lpmf(Y | eta);

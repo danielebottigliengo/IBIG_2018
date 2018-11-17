@@ -134,7 +134,7 @@ alphas <- c(
   -0.388, -0.001, -0.045, 0.10, -1.59
 )
 
-influenza_rate <- 0.05
+influenza_rate <- 0.1
 
 # 3A) Define the intercept of the exposure model -----------------------
 intercept_grid <- seq(from = -8, to = 8, by = 0.01)
@@ -163,11 +163,12 @@ db <- design_matrix %>%
   mutate(influenza = influenza) %>%
   mutate_at(
     vars(
-      race, home_oxygen_use, current_smoking:other_diseases,
+      home_oxygen_use, current_smoking:other_diseases,
       vaccine, influenza
     ), funs(factor(if_else(. == 1, "Yes", "No")))
   ) %>%
   mutate(
+    race = factor(if_else(race == 1, "black", "not_black")),
     gender = factor(if_else(gender == 1, "female", "male"))
   )
 
