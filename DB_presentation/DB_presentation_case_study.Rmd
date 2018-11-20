@@ -118,7 +118,7 @@ ovarian_scaled_list <- list(
 \item{Median follow-up time in the Cyclophosphamide group: 
       $448$ days}
 \item{Median follow-up time in the Cyclophosphamide plus 
-      Adriamycin $563$ days}  
+      Adriamycin: $563$ days}  
 \item{$12$ patients died during the study and $14$ were right-censored}
 \end{itemize}
 
@@ -176,19 +176,32 @@ where:
        function of some covariates}
 \end{itemize}
 
-## Fake data simulations
-\begin{itemize}
-  \item{Starting point of model fitting}
-  \item{Check if the model makes sense}
-\end{itemize}
-
+## Data simulations
 How to proceed:
 \begin{enumerate}
-  \item{Simulate fake data from the prior predictive distributions}
+  \item{Draw a parameter value from the prior distributions}
+  \item{Simulate data according to the model and the parameters 
+        values drawn from the priors}
+  \item{Are simulated plausible?}
   \item{Fit the model to the simulated data}
   \item{Are true parameters values included in the posterior 
         distributions?}
 \end{enumerate}
+
+## Inspect simulated data
+```{r, fig.width = 9, fig.height = 5}
+ppc_uniform
+```
+
+## Inspect simulated data
+```{r, fig.width = 9, fig.height = 5}
+ppc_weakly
+```
+
+## Recover the parameters values
+```{r, fig.width = 9, fig.height = 5}
+recover_fake_weibull_centered
+```
 
 ## The model: data block
 \scriptsize
@@ -255,21 +268,15 @@ model {
 "
 ```
 
-## Recover the parameters values
-```{r, fig.width = 9, fig.height = 5}
-recover_fake_weibull_centered
-```
 
 ## Fit the model to the real data
+Before fitting the model to the real data, centering and scale 
+the covariates is useful to ease the sampling process
+
 \begin{itemize}
-\setlength\itemsep{1em}
-  \item{If the fitted model is able to recover the true parameters
-        values it is possible to proceed by fitting the model to
-        real data}
-  \item{Prior Predictive checks can be very useful to question the
-        the correctness of the model}
-  \item{Before fitting the model to the real data, centering and scale
-        the covariates is useful to ease the sampling process}
+  \item{Variables centered around the mean}
+  \item{Age in years divided by a constant ($100$)}
+  \item{Follow-up time from days to years}
 \end{itemize}
 
 Two steps are important to evaluate the robustness of the analysis:
@@ -281,8 +288,12 @@ Two steps are important to evaluate the robustness of the analysis:
 
 ## MCMC diagnostics: $R_{hat}$ and $ESS$
 ```{r, fig.width = 10, fig.height = 6}
-r_hat_weibull <- rhat(model_list_surv$weibull)
-n_eff_weibull <- neff_ratio(model_list_surv$weibull)
+r_hat_weibull <- rhat(
+  model_list_surv$weibull, pars = c("alpha", "beta_0", "beta")
+)
+n_eff_weibull <- neff_ratio(
+  model_list_surv$weibull, pars = c("alpha", "beta_0", "beta")
+)
 
 p1 <- mcmc_rhat(r_hat_weibull)
 p2 <- mcmc_neff(n_eff_weibull)
@@ -301,7 +312,7 @@ traceplot(
 )
 ```
 
-## Posterior Predictive Checks (1)
+## Posterior calibration (1)
 ```{r, fig.width = 10, fig.height = 6}
 stan_model <- model_list_surv$weibull
 
@@ -316,7 +327,7 @@ ppc_dens_overlay(y = db_ovarian_scaled$futime, yrep = y_rep[1:200, ]) +
 # Greater simulated follow-up times seem to be frequent...
 ```
 
-## Posterior Predictive Checks (2)
+## Posterior calibration (2)
 ```{r, fig.width = 10, fig.height = 4}
 # Compare some quantiles of follow-up times
 ppc_median <- ppc_stat(
@@ -334,7 +345,7 @@ ggpubr::ggarrange(
 )
 ```
 
-## Posterior Predictive Checks (3)
+## Posterior calibration (3)
 ```{r, fig.width = 10, fig.height = 4}
 first_quart <- function(x) quantile(x, probs = 0.25)
 third_quart <- function(x) quantile(x, probs = 0.75)
@@ -785,7 +796,7 @@ ggpubr::ggarrange(
 )
 ```
 
-## T-student priors: model comparison
+## T-student priors: model comparison and averaging
 ```{r}
 weights_comp_logit <- data_frame(
   model = names(pseudo_bma),

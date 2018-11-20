@@ -177,7 +177,7 @@ Study}\label{survival-analysis-case-study}
 \item{Median follow-up time in the Cyclophosphamide group: 
       $448$ days}
 \item{Median follow-up time in the Cyclophosphamide plus 
-      Adriamycin $563$ days}  
+      Adriamycin: $563$ days}  
 \item{$12$ patients died during the study and $14$ were right-censored}
 \end{itemize}
 
@@ -241,21 +241,37 @@ Weibull parametric proportional hazard model: \[
 
 \end{frame}
 
-\begin{frame}{Fake data simulations}
-
-\begin{itemize}
-  \item{Starting point of model fitting}
-  \item{Check if the model makes sense}
-\end{itemize}
+\begin{frame}{Data simulations}
 
 How to proceed:
 
 \begin{enumerate}
-  \item{Simulate fake data from the prior predictive distributions}
+  \item{Draw a parameter value from the prior distributions}
+  \item{Simulate data according to the model and the parameters 
+        values drawn from the priors}
+  \item{Are simulated plausible?}
   \item{Fit the model to the simulated data}
   \item{Are true parameters values included in the posterior 
         distributions?}
 \end{enumerate}
+
+\end{frame}
+
+\begin{frame}{Inspect simulated data}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-6-1.pdf}
+
+\end{frame}
+
+\begin{frame}{Inspect simulated data}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-7-1.pdf}
+
+\end{frame}
+
+\begin{frame}{Recover the parameters values}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-8-1.pdf}
 
 \end{frame}
 
@@ -342,23 +358,15 @@ How to proceed:
 
 \end{frame}
 
-\begin{frame}{Recover the parameters values}
-
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-9-1.pdf}
-
-\end{frame}
-
 \begin{frame}{Fit the model to the real data}
 
+Before fitting the model to the real data, centering and scale the
+covariates is useful to ease the sampling process
+
 \begin{itemize}
-\setlength\itemsep{1em}
-  \item{If the fitted model is able to recover the true parameters
-        values it is possible to proceed by fitting the model to
-        real data}
-  \item{Prior Predictive checks can be very useful to question the
-        the correctness of the model}
-  \item{Before fitting the model to the real data, centering and scale
-        the covariates is useful to ease the sampling process}
+  \item{Variables centered around the mean}
+  \item{Age in years divided by a constant ($100$)}
+  \item{Follow-up time from days to years}
 \end{itemize}
 
 Two steps are important to evaluate the robustness of the analysis:
@@ -372,31 +380,31 @@ Two steps are important to evaluate the robustness of the analysis:
 
 \begin{frame}{MCMC diagnostics: \(R_{hat}\) and \(ESS\)}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-10-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-12-1.pdf}
 
 \end{frame}
 
 \begin{frame}{MCMC diagnostics: traceplot}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-11-1.pdf}
-
-\end{frame}
-
-\begin{frame}{Posterior Predictive Checks (1)}
-
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-12-1.pdf}
-
-\end{frame}
-
-\begin{frame}{Posterior Predictive Checks (2)}
-
 \includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-13-1.pdf}
 
 \end{frame}
 
-\begin{frame}{Posterior Predictive Checks (3)}
+\begin{frame}{Posterior calibration (1)}
 
 \includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-14-1.pdf}
+
+\end{frame}
+
+\begin{frame}{Posterior calibration (2)}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-15-1.pdf}
+
+\end{frame}
+
+\begin{frame}{Posterior calibration (3)}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-16-1.pdf}
 
 \end{frame}
 
@@ -415,37 +423,37 @@ Two steps are important to evaluate the robustness of the analysis:
 
 \begin{frame}{Log-normal (1)}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-15-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-17-1.pdf}
 
 \end{frame}
 
 \begin{frame}{Log-normal (2)}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-16-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-18-1.pdf}
 
 \end{frame}
 
 \begin{frame}{Log-normal (3)}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-17-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-19-1.pdf}
 
 \end{frame}
 
 \begin{frame}{Gamma (1)}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-18-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-20-1.pdf}
 
 \end{frame}
 
 \begin{frame}{Gamma (2)}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-19-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-21-1.pdf}
 
 \end{frame}
 
 \begin{frame}{Gamma (3)}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-20-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-22-1.pdf}
 
 \end{frame}
 
@@ -496,9 +504,9 @@ model & stacking & pseudo\_bma & pseudo\_bma\_bb\tabularnewline
 model & stacking & pseudo\_bma & pseudo\_bma\_bb\tabularnewline
 \midrule
 \endhead
-weibull & 0 & 0.014 & 0.042\tabularnewline
-lognormal & 1 & 0.772 & 0.742\tabularnewline
-gamma & 0 & 0.214 & 0.216\tabularnewline
+weibull & 0 & 0.014 & 0.047\tabularnewline
+lognormal & 1 & 0.772 & 0.736\tabularnewline
+gamma & 0 & 0.214 & 0.217\tabularnewline
 \bottomrule
 \end{longtable}
 
@@ -506,19 +514,19 @@ gamma & 0 & 0.214 & 0.216\tabularnewline
 
 \begin{frame}{Parameters of the model (1)}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-22-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-24-1.pdf}
 
 \end{frame}
 
 \begin{frame}{Parameters of the model (2)}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-23-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-25-1.pdf}
 
 \end{frame}
 
 \begin{frame}{Posterior predictive survival curves}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-24-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-26-1.pdf}
 
 \end{frame}
 
@@ -586,13 +594,13 @@ Study}\label{logistic-regression-case-study}
 
 \begin{frame}{Non-informative uniform priors}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-25-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-27-1.pdf}
 
 \end{frame}
 
 \begin{frame}{Non-informative uniform priors}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-26-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-28-1.pdf}
 
 \end{frame}
 
@@ -625,25 +633,25 @@ Study}\label{logistic-regression-case-study}
 
 \begin{frame}{Vague priors: \(N \sim \left( 0, 100 \right)\)}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-27-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-29-1.pdf}
 
 \end{frame}
 
 \begin{frame}{Vague priors: \(N \sim \left( 0, 100 \right)\)}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-28-1.pdf}
-
-\end{frame}
-
-\begin{frame}{\(Cauchy \sim \left( 0, 2.5 \right)\)}
-
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-29-1.pdf}
-
-\end{frame}
-
-\begin{frame}{\(Cauchy \sim \left( 0, 2.5 \right)\)}
-
 \includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-30-1.pdf}
+
+\end{frame}
+
+\begin{frame}{\(Cauchy \sim \left( 0, 2.5 \right)\)}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-31-1.pdf}
+
+\end{frame}
+
+\begin{frame}{\(Cauchy \sim \left( 0, 2.5 \right)\)}
+
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-32-1.pdf}
 
 \end{frame}
 
@@ -669,23 +677,23 @@ Study}\label{logistic-regression-case-study}
 
 \begin{frame}{T-student priors: coefficients}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-31-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-33-1.pdf}
 
 \end{frame}
 
 \begin{frame}{T-student priors: posterior checks (1)}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-32-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-34-1.pdf}
 
 \end{frame}
 
 \begin{frame}{T-student priors: posterior checks (2)}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-33-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-35-1.pdf}
 
 \end{frame}
 
-\begin{frame}{T-student priors: model comparison}
+\begin{frame}{T-student priors: model comparison and averaging}
 
 \begin{longtable}[]{@{}lrrr@{}}
 \caption{Model comparison with Stacking, Pseudo-BMA and Pseudo-BMA with
@@ -709,7 +717,7 @@ student\_t\_7\_unp & 0.000 & 0.188 & 0.171\tabularnewline
 
 \begin{frame}{Vaccine effectiveness}
 
-\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-35-1.pdf}
+\includegraphics{DB_presentation_case_study_files/figure-beamer/unnamed-chunk-37-1.pdf}
 
 \end{frame}
 

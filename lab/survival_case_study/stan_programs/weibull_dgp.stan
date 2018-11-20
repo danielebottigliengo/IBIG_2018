@@ -25,12 +25,12 @@ generated quantities {
   vector[n_obs + n_cens] futime;
 
   // Generate parameter values from the prior predictive distribution
-  real alpha = normal_rng(2, 0.1);
-  real beta_0 = normal_rng(-10, 0.1);
-  real beta_age = normal_rng(log(1.5), 0.1);
-  real beta_resid_ds = normal_rng(log(0.7), 0.1);
-  real beta_ecog_ps = normal_rng(log(1.3), 0.1);
-  real beta_rx = normal_rng(log(1.6), 0.1);
+  real alpha = uniform_rng(1, 100);
+  real beta_0 = uniform_rng(-100, 100);
+  real beta_age = uniform_rng(-100, 100);
+  real beta_resid_ds = uniform_rng(-100, 100);
+  real beta_ecog_ps = uniform_rng(-100, 100);
+  real beta_rx = uniform_rng(-100, 100);
 
   // Simulate fake data
   real eta_obs;

@@ -11,6 +11,18 @@ header-includes:
    - \usepackage{mathtools}
    - \usepackage{pgfplots}
    - \usepackage{listings}
+   - \usepackage{multirow}
+   - \usepackage{amssymb}
+   - \usepackage{pifont}
+   - \usepackage{tikz}
+   - \usepackage{graphics}
+   - \usepackage{hyperref}
+   - \usepackage{enumerate}
+   - \hypersetup{
+    colorlinks = true,
+    linkcolor = blue,
+    filecolor = magenta,      
+    urlcolor = cyan,}
 output: 
   beamer_presentation: 
     fig_caption: yes
@@ -19,9 +31,405 @@ output:
 classoption: [a4paper]
 biblio-style:  alphabetic
 biblio-citestyle: authoryear
+bibliography:
+   - bibliography_talk.bib
+nocite: |
+  @gelman_2013
 ---
 
 ```{r setup, include=FALSE}
+knitr::opts_chunk$set(comment = '')
 knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
 ```
 
+```{r}
+library(tidyverse)
+library(rstan)
+  options(mc.cores = parallel::detectCores() - 1)
+  rstan_options(auto_write = TRUE)
+  Sys.setenv(LOCAL_CPPFLAGS = c('-march=native'))
+library(bayesplot)
+library(loo)
+library(MASS)
+library(knitr)
+  
+load(here::here("DB_presentation/bwt_example.rda"))
+```
+
+
+## Build a Bayesian model
+
+How to build a model in the Bayesian context?
+
+- Statistical modeling can be viewed as the process of setting up
+  a model for the data generating process
+  
+- The main interest is to draw conclusions on some quantities of
+  interest that are unknown (parameters) conditioning on quantities
+  that are known and observed (observed data)
+  
+- In a Bayesian framework, it means expressing the uncertainty in the
+  unknown quantities by using probability distributions, i.e.
+  _posterior_ distributions
+  
+- _Posterior_ distributions are derived by combining external 
+  information on the parameters in the form of _prior_ distributions and
+  observed information in the form of the _likelihood_
+
+## Two sorts of Bayesian analyses
+Two types of Bayesian data analysis can be identified [@gelman_2017]:
+
+\begin{enumerate}
+\setlength\itemsep{1em}
+ \item{\textbf{Ideal analysis}}
+    \begin{itemize}
+    \item{Prior defined before the data are observed}
+    \item{Data are analyzed and prior is update}
+    \end{itemize}
+ \item{\textbf{Analysis with default priors}}
+    \begin{itemize}
+    \item{Data are retrieved and a model with some or many parameters
+          is constructed}
+    \item{Priors are then defined to carry on the inference process}
+    \end{itemize}
+\end{enumerate}
+
+## The role of the priors (1)
+
+- The second type of analysis is concerned with defining priors that 
+  are somewhat linked with the likelihood (observed data)
+  
+- Such priors can be thought as __regularizing__ priors and they are
+  designed to make more stable inference
+  
+- _Weakly informative_ priors are distributions that can accomplish
+ regularized inference and may be used as the default starting point
+
+## The role of the priors (2)
+- The prior can play a very important role during model building,
+ especially if the data are complex and noisy
+ 
+- It is important to calibrate prior distributions to obtain 
+  reasonable answers given the analyzed situation
+
+- A robust workflow must be implemented to create a solid model:
+    - potential observed data given particular priors
+    - discrepancies between potential and actual observed data
+    
+## Bayesian workflow
+\includegraphics[width = 1.1\linewidth]{figures/bayesian_workflow.png}
+
+## 1) Exploratory Data Analysis
+It should be the starting point of every statistical analyses 
+[@gelman_2004]:
+
+\begin{itemize}
+\setlength\itemsep{1em}
+  \item{Plot the distribution of observed data}
+  \item{Inspect possible relationships between outcome and potential
+        predictors}
+  \item{Look for patterns beyond what is expected}
+  \item{Study missing data}
+\end{itemize}
+
+## 1) Exploratory Data Analysis
+```{r, fig.height = 6, fig.width = 10}
+db <- birthwt %>% 
+  mutate_at(
+    vars(low, race:ui), funs(factor)
+  ) %>% 
+  mutate_at(vars(age, lwt, bwt), funs(as.double)) %>% 
+  mutate(
+    bwt = bwt/1000, lwt = lwt/0.453592
+  )
+
+ggplot(
+  data = db, mapping = aes(x = bwt)
+) +
+  geom_histogram(bins = 30, colour = "red", fill = "red", alpha = 0.2) +
+  xlab("Birth weight in Kg") + 
+  ylab("") +
+  theme_bw()
+```
+
+## 1) Exploratory Data Analysis
+```{r, fig.height = 6, fig.width = 10}
+ggplot(
+  data = db, 
+  mapping = aes(x = lwt, y = bwt, colour = ui, fill = ui)
+) +
+  geom_smooth(method = "lm") +
+  geom_point() +
+  scale_colour_discrete(
+    name = "Uterine irritability",
+    labels = c("No", "Yes")
+  ) +
+  scale_fill_discrete(
+    name = "Uterine irritability",
+    labels = c("No", "Yes")
+  ) +
+  xlab("Mother's weight in Kg") + 
+  ylab("Birth weight in Kg") +
+  theme_bw()
+```
+
+## 1) Exploratory Data Analysis
+```{r, fig.height = 6, fig.width = 10}
+ggplot(
+  data = db %>% 
+    mutate(
+      smoke = factor(if_else(smoke == "1", "Smoke = Yes", "Smoke = No"))
+    ), 
+  mapping = aes(x = lwt, y = bwt, colour = ui, fill = ui)
+) +
+  geom_smooth(method = "lm") +
+  geom_point() +
+  facet_grid(. ~ smoke) +
+  scale_colour_discrete(
+    name = "Uterine irritability",
+    labels = c("No", "Yes")
+  ) +
+  scale_fill_discrete(
+    name = "Uterine irritability",
+    labels = c("No", "Yes")
+  ) +
+  xlab("Mother's weight in Kg") + 
+  ylab("Birth weight in Kg") +
+  theme_bw()
+```
+
+## 2) Data simulation
+\begin{itemize}
+\setlength\itemsep{1em}
+  \item{The use of simulated data can be very helpful to understand
+        the model the analyst is going to fit}
+  \item{A useful step to calibrate the prior distributions}
+\end{itemize}
+
+Data simulation in practice:
+\footnotesize
+\begin{enumerate}
+  \item{Simulate data similar to those observed by specifiyng priors
+        distributions for the parameters in the model}
+  \item{Are simulated data coherent with observed data?}
+  \item{Fit the model to the real data}
+  \item{Look if the posterior distributions recover the true parameters
+        values}
+  \item{If the model is not able to recover the parameters values a
+        revision of the model is suggested}
+\end{enumerate}
+
+## 2) Data simulation
+```{r, fig.height = 6, fig.width = 10}
+bwt_rep_fake_vague <- fake_vague_post$bwt[1, ]
+
+obs_fake_plot_vague +
+  ggtitle("Non-informative (Uniform) prior")
+```
+
+## 2) Data simulation
+```{r, fig.height = 6, fig.width = 10}
+bwt_rep_fake_reg <- fake_reg_post$bwt[1, ]
+
+obs_fake_plot_reg +
+  ggtitle("Weakly informative prior")
+```
+
+## 3A) Model Fitting
+Once the simulated data are coherent with the observed data, it is
+possible to proceed by fitting the model to the real data
+
+\begin{itemize}
+\setlength\itemsep{1em}
+  \item{It is a good idea to put all the variables roughly on the
+        unit scale}
+  \item{Sampling from the posterior will require less computational
+        effort and the algorithm will provide a more accurate 
+        description of the surface of the posterior}
+  \item{Some useful data pre-processing steps:}
+  \begin{itemize}
+    \item{Scale the variables by a constant, e.g. change unit of measure}
+    \item{Trasform the covariates, e.g. log scale}
+    \item{Use \textbf{QR} decomposition of the design matrix}
+  \end{itemize}
+\end{itemize}
+
+## 3B) MCMC algorithms
+\begin{itemize}
+\setlength\itemsep{1em}
+  \item{With very complex models with many parameters it is almost
+        impossible to derive analytic form of the posterior}
+  \item{Some algorithms that "explore" the posterior and sample from
+        it are needed}
+  \item{Markov Chain Monte Carlo (MCMC) are the most used algorithms,
+        e.g. Metropolis-Hastings, Gibbs sampling}
+\end{itemize}
+
+## 3B) MCMC algorithms
+
+- Hamiltonian Monte Carlo (HMC) algorithm has recently gained
+  popularity because of its higher efficiency in sampling 
+  from the posterior with respect to Metropolis-Hastings and
+  Gibbs sampling
+  
+- __Stan__ is an open-source software to perform Bayesian inferece
+
+- __Stan__ uses the No-U Turn Sampler (NUTS), an efficient version of 
+  the HMC [@hoffman_2014]
+
+
+## 3B) MCMC diagnostics
+\begin{itemize}
+\setlength\itemsep{1em}
+  \item{$R_{hat}$ is the ratio between the average variances of draws 
+        within each chain to the variance of pooled draws across
+        chains. If it converges to $1$ it means that the chains are
+        in equilibrium}
+  \item{Effective sample size (ESS) represents the number of samples
+        that are actually independent. High number means less dependence
+        between each state of the Markov chain and thus a better
+        exploration of the posterior}
+  \item{Divergent transitions of the MCMC algorithm}
+\end{itemize}
+
+## 3B) MCMC diagnostics
+\includegraphics[width = 1.1\linewidth]{figures/div_trans.png}
+
+## 3B) MCMC diagnostics
+\begin{itemize}
+\setlength\itemsep{1em}
+  \item{MCMC diagnostics are fundamental to understand if the
+        posterior has been properly explored}
+  \item{If the sampling process did not perform well, biased inference
+        will be obtained and the interpretation of such results
+        could be misleading}
+  \item{With complex models, the reparameterization of the model can be
+        very helpful to ease the sampling process}
+\end{itemize}
+
+## 4) Posterior calibration
+Does the data simulated from the model make sense with observed data?
+
+\begin{itemize}
+\setlength\itemsep{1em}
+  \item{Plot the distribution of simulated data with the distribution
+        of observed data}
+  \item{Compare summary statistics of simulated and observed data}
+  \begin{itemize}
+    \setlength\itemsep{1em}
+    \item{Mean and standard deviation}
+    \item{Proportion of "special" values}
+    \item{Quantiles}
+\end{itemize}  
+\end{itemize}
+
+## 4) Posterior calibration
+```{r, fig.height = 5, fig.width = 10}
+y_obs <- db[["bwt"]]
+y_rep_vague <- as.matrix(
+  x = model_list_bwt[["vague"]], pars = c("y_rep")
+)
+
+y_rep_reg <- as.matrix(
+  x = model_list_bwt[["reg"]], pars = c("y_rep")
+)
+
+ppc_dens_overlay(y = y_obs, yrep = y_rep_vague[1:200, ])
+```
+
+## 4) Posterior calibration
+```{r, fig.height = 5, fig.width = 10}
+neg_value <- function(x) mean(x < 0)
+
+ppc_stat(y = y_obs, yrep = y_rep_vague[1:200, ], stat = "neg_value")
+```
+
+## 4) Posterior calibration
+\begin{itemize}
+\setlength\itemsep{1em}
+  \item{Simulated data should not be identical to observed data}
+  \item{They must range within plausible values of the analyzed data}
+  \item{If simulated data are outside the range of plausible values
+        or if they can't capture some features of the observed data,
+        it would be a good idea to revise the model, e.g. change the
+        family distribution}
+\end{itemize}
+
+## 5) Model comparison
+\begin{itemize}
+\setlength\itemsep{1em}
+  \item{Identify which model best captures the features of the 
+        observed data}
+  \item{Leave-one-out cross-validation (LOO-CV) is used to evaluate
+        the predictive distribution of each left-out data point}
+  \item{The expected log predictive densities (ELPD) can be estimated
+        using Pareto-smoothed importance sampling (PSIS)}
+  \item{It can be also helpful to evaluate if there are some 
+        observations that are influential for the log predictive
+        density}
+\end{itemize}
+
+## 5) Model comparison
+```{r, fig.height = 5, fig.width = 10}
+psis_plot_reg <- loo_list_bwt[["reg"]]
+
+plot(psis_plot_reg)
+```
+
+## 5) Model averaging
+- Model averaging is a valuable alternative to model selection when more
+  "candidate" models are present
+  
+- Each model is weighted by its predictive performance (ELPD in the
+  Bayesian context)
+  
+- It can be very useful to evaluate which model has the higher ELPD, 
+  i.e. higher weights in model averaging
+  
+- Model averaging techniques [@yao_2018]:
+    - __Pseudo bayesian model averaging (Pseudo-BMA)__
+    - __Pseudo bayesian model averaging with Bayesian Bootstrap (Pseudo-BMA BB)__
+    - __Stacking__
+    
+## 5) Model averaging
+```{r}
+weights_comp_bwt <- data_frame(
+  model = c("vague", "weakly_inf_1", "weakly_inf_2"),
+  stacking = stacking_weights_bwt,
+  pseudo_bma = pseudo_bma_bwt,
+  pseudo_bma_bb = pseudo_bma_bb_bwt
+) %>% 
+  mutate_at(vars(stacking:pseudo_bma_bb), funs(round(., 3L)))
+
+
+kable(
+  weights_comp_bwt, digits = 2L,
+  caption = "Model averaging with Stacking, Pseudo-BMA and 
+             Pseudo-BMA with Bayesian Bootstrap."
+)
+```
+
+## Final remarks
+\footnotesize
+\begin{itemize}
+  \item{Prior distributions play a key role in the inference process,
+        especially with complex and noisy data}
+  \item{The ideal way to elicit prior distributions is to use 
+        information from other studies or expert's opnions}
+  \item{When the ideal derivation is challenging and time-consuming,
+        priors should be calibrated given what we expect to observe}
+  \item{The use of simulated data is crucial to understand and 
+        calibrate a robust model for the data}
+  \item{The sampling process must always be evaluated to avoid biased
+        inference that could lead to unreasonable results}
+  \item{We shouldn't be afraid of models with many parameters as long
+        as they are built with regularizing (weakly informative) priors}
+  \item{Combining inference from more than one model is valuable 
+        approach to account for all the uncertainty the analyst has in
+        the specific problem}
+\end{itemize}
+
+## References
+\scriptsize

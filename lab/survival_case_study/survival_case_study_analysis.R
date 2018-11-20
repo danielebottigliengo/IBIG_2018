@@ -91,21 +91,66 @@ p_ecog_ps <- ggsurvplot(
 # 2) Prior Predictive Checking -----------------------------------------
 # Simulate fake data in R and check if the weibull model can recover
 # parameter values
-n_obs <- 46L
-n_cens <- 54L
+n_obs <- 13L
+n_cens <- 13L
 
 # 2A) Generate fake data -----------------------------------------------
-weibull_fake_comp <- stan_model(
+weibull_fake_uniform_comp <- stan_model(
   file = "lab/survival_case_study/stan_programs/weibull_dgp.stan"
 )
 
-fitted_weibull_fake <- sampling(
-  object = weibull_fake_comp, data = list(n_obs = 46, n_cens = 54),
-  chains = 1L, cores = 1L, iter = 1L, algorithm = "Fixed_param",
+weibull_fake_weakly_comp <- stan_model(
+  file = "lab/survival_case_study/stan_programs/weibull_dgp_weakly.stan"
+)
+
+fitted_weibull_fake_uniform <- sampling(
+  object = weibull_fake_uniform_comp,
+  data = list(n_obs = 13, n_cens = 13),
+  chains = 1L, cores = 1L, iter = 200L, algorithm = "Fixed_param",
   seed = mcmc_seed
 )
 
-fake_data_weibull <- rstan::extract(fitted_weibull_fake)
+fitted_weibull_fake_weakly <- sampling(
+  object = weibull_fake_weakly_comp,
+  data = list(n_obs = 13, n_cens = 13),
+  chains = 1L, cores = 1L, iter = 200L, algorithm = "Fixed_param",
+  seed = mcmc_seed
+)
+
+y_obs <- db_ovarian_scaled$futime
+y_rep_uniform <- as.matrix(
+  x = fitted_weibull_fake_uniform, pars = c("futime")
+)
+y_rep_weakly <- as.matrix(
+  x = fitted_weibull_fake_weakly, pars = c("futime")
+)
+
+df_weakly <- expand.grid(y_rep = y_rep_weakly, y_obs = y_obs)
+df_uniform <- expand.grid(y_rep = y_rep_uniform, y_obs = y_obs)
+
+
+ppc_uniform <- ggplot(
+  data = df_uniform,
+  mapping = aes(x = y_obs, y = y_rep)
+) +
+  geom_jitter(colour = "dodgerblue", alpha = 0.3) +
+  xlab("Observed follow-up times") +
+  ylab("Simulated follow-up times") +
+  ggtitle("Uniform priors") +
+  theme_bw()
+
+ppc_weakly <- ggplot(
+  data = df_weakly,
+  mapping = aes(x = y_obs, y = y_rep)
+) +
+  geom_jitter(colour = "dodgerblue", alpha = 0.3) +
+  xlab("Observed follow-up times") +
+  ylab("Simulated follow-up times") +
+  ggtitle("Weakly informative priors") +
+  theme_bw()
+
+
+fake_data_weibull <- rstan::extract(fitted_weibull_fake_weakly)
 
 # Prepare fake data for stan program
 fake_data_db <- data_frame(
@@ -147,16 +192,22 @@ fitted_weibull_centered_fake <- sampling(
 )
 
 # Did the model recover the parameters?
-post_fake_weibull_centered <- as.matrix(
+post_fake_weibull_centered <- as.data.frame(
   fitted_weibull_centered_fake,
   pars = c("alpha", "beta_0", "beta")
-)
+) %>%
+  setNames(
+    object = ., nm = c(
+      "alpha", "intercept", "age", "residual_disease", "ECOG",
+      "treatment"
+    )
+  )
 
-true_fake_weibull_centered <- c(
+true_fake_weibull_centered <- cbind(
   fake_data_weibull$alpha, fake_data_weibull$beta_0,
   fake_data_weibull$beta_age, fake_data_weibull$beta_resid_ds,
   fake_data_weibull$beta_ecog_ps, fake_data_weibull$beta_rx
-)
+)[1, ]
 
 recover_fake_weibull_centered <- mcmc_recover_hist(
   x = post_fake_weibull_centered, true = true_fake_weibull_centered
@@ -356,7 +407,8 @@ lognormal_survplot <- ggplot(
 
 # Save everything for the slides ---------------------------------------
 save(
-  p_trt, p_resid_ds, p_ecog_ps,
+  p_trt, p_resid_ds, p_ecog_ps, df_uniform, df_weakly,
+  ppc_weakly, ppc_uniform,
   recover_fake_weibull_centered, model_list_surv, loo_list_surv,
   stacking_weights_surv, pseudo_bma_surv, pseudo_bma_bb_surv,
   fitted_lognormal_pred, lognormal_survplot,
