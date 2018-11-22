@@ -1,0 +1,34 @@
+---
+title: "\\Large\\textbf{Introduction to Bayesian computation and application to regression models and survival analysis}"
+subtitle: "\\large\\textbf{\\textrm{IBIG 2018}}"
+author: "\\centering\\underline{\\textbf{Daniele Bottigliengo}}\\thanks{\\tiny Unit of Biostatistics, Epidemiology and Public Health, Department of \\newline Cardiac, Thoracic, Vascular Sciences and Public Health, University of Padua, Italy}"
+date: "\\centering\\emph{Padova, Italy, November 22, 2018}"
+header-includes:
+   - \usepackage{booktabs}
+   - \usepackage{subfig}
+   - \usepackage{multicol}
+   - \usepackage{rotating}
+   - \usepackage{mathtools}
+   - \usepackage{pgfplots}
+   - \usepackage{listings}
+output: 
+  beamer_presentation: 
+    fig_caption: yes
+    keep_tex: yes
+    theme: Padova
+classoption: [a4paper]
+biblio-style:  alphabetic
+biblio-citestyle: authoryear
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Case study on logistic regression
+
+
+
+
+
+
