@@ -214,7 +214,7 @@ Data simulation in practice:
   \item{Simulate data similar to those observed by specifiyng priors
         distributions for the parameters in the model}
   \item{Are simulated data coherent with observed data?}
-  \item{Fit the model to the real data}
+  \item{Fit the model to the simulated data}
   \item{Look if the posterior distributions recover the true parameters
         values}
   \item{If the model is not able to recover the parameters values a
@@ -252,7 +252,6 @@ possible to proceed by fitting the model to the real data
   \begin{itemize}
     \item{Scale the variables by a constant, e.g. change unit of measure}
     \item{Trasform the covariates, e.g. log scale}
-    \item{Use \textbf{QR} decomposition of the design matrix}
   \end{itemize}
 \end{itemize}
 
@@ -326,7 +325,7 @@ Does the data simulated from the model make sense with observed data?
 \end{itemize}
 
 ## 4) Posterior calibration
-```{r, fig.height = 5, fig.width = 10}
+```{r, fig.height = 6, fig.width = 10}
 y_obs <- db[["bwt"]]
 y_rep_vague <- as.matrix(
   x = model_list_bwt[["vague"]], pars = c("y_rep")
@@ -340,10 +339,10 @@ ppc_dens_overlay(y = y_obs, yrep = y_rep_vague[1:200, ])
 ```
 
 ## 4) Posterior calibration
-```{r, fig.height = 5, fig.width = 10}
-neg_value <- function(x) mean(x < 0)
-
-ppc_stat(y = y_obs, yrep = y_rep_vague[1:200, ], stat = "neg_value")
+```{r, fig.height = 6, fig.width = 10}
+ppc_stat_2d(
+  y = y_obs, yrep = y_rep_vague[1:200, ], stat = c("mean", "sd")
+)
 ```
 
 ## 4) Posterior calibration
@@ -396,7 +395,7 @@ plot(psis_plot_reg)
 ## 5) Model averaging
 ```{r}
 weights_comp_bwt <- data_frame(
-  model = c("vague", "weakly_inf_1", "weakly_inf_2"),
+  model = c("model_1", "model_2"),
   stacking = stacking_weights_bwt,
   pseudo_bma = pseudo_bma_bwt,
   pseudo_bma_bb = pseudo_bma_bb_bwt
@@ -411,24 +410,19 @@ kable(
 )
 ```
 
-## Final remarks
-\footnotesize
+## Why Bayesian modeling?
 \begin{itemize}
-  \item{Prior distributions play a key role in the inference process,
-        especially with complex and noisy data}
-  \item{The ideal way to elicit prior distributions is to use 
-        information from other studies or expert's opnions}
-  \item{When the ideal derivation is challenging and time-consuming,
-        priors should be calibrated given what we expect to observe}
-  \item{The use of simulated data is crucial to understand and 
-        calibrate a robust model for the data}
-  \item{The sampling process must always be evaluated to avoid biased
-        inference that could lead to unreasonable results}
-  \item{We shouldn't be afraid of models with many parameters as long
-        as they are built with regularizing (weakly informative) priors}
-  \item{Combining inference from more than one model is valuable 
-        approach to account for all the uncertainty the analyst has in
-        the specific problem}
+\setlength\itemsep{1em}
+  \item{Clinical studies are often characterized by small sample size}
+  \item{In such situations it is very difficult to make inference
+        with a certain degree of accuracy, e.g. assessing the efficacy
+        of a new drug}
+  \item{The use of priors distributions, in particular weakly 
+        informative and informative priors, may help to face this 
+        issue by providing estimates that are more regularized and
+        less variable}
+  \item{All the uncertainty that the analyst has on the problem is
+        expressed in a coherent way}
 \end{itemize}
 
 ## References

@@ -27,7 +27,7 @@ db <- birthwt %>%
 db_list <- list(
   N = nrow(db), K = 4L,
   X = db %>% dplyr::select(age, smoke, ui, lwt) %>% as.matrix(),
-  Y = db[["bwt"]]
+  Y = db[["bwt"]], lower_b = 0
 )
 
 # Prior Predictive Checks ----------------------------------------------
@@ -40,13 +40,13 @@ dgp_comp_reg <- stan_model(
 )
 
 fake_vague <- sampling(
-  object = dgp_comp_vague, data = list(N = 189L),
+  object = dgp_comp_vague, data = list(N = 189L, lower_b = 0),
   chains = 1L, cores = 1L, iter = 1L, algorithm = "Fixed_param",
   seed = mcmc_seed
 )
 
 fake_reg <- sampling(
-  object = dgp_comp_reg, data = list(N = 189L),
+  object = dgp_comp_reg, data = list(N = 189L, lower_b = 0),
   chains = 1L, cores = 1L, iter = 1L, algorithm = "Fixed_param",
   seed = mcmc_seed
 )
@@ -102,7 +102,8 @@ design_mat_int <- db %>%
 db_int_list <- list(
   N = nrow(db), K = 5L,
   X = design_mat_int,
-  Y = db[["bwt"]]
+  Y = db[["bwt"]],
+  lower_b = 0
 )
 
 fitted_reg_int <- sampling(
@@ -121,14 +122,14 @@ comp_model_list <- map(
 
 loo_list_bwt <- map(.x = comp_model_list, ~ .x[["loo"]])
 
-stacking_weights_bwt <- loo_model_weights(loo_list_bwt)
+stacking_weights_bwt <- loo_model_weights(loo_list_bwt[2:3])
 
 pseudo_bma_bwt <- loo_model_weights(
-  loo_list_bwt, method = "pseudobma", BB = FALSE
+  loo_list_bwt[2:3], method = "pseudobma", BB = FALSE
 )
 
 pseudo_bma_bb_bwt <- loo_model_weights(
-  loo_list_bwt, method = "pseudobma", BB = TRUE
+  loo_list_bwt[2:3], method = "pseudobma", BB = TRUE
 )
 
 # Save everything for the slides ---------------------------------------

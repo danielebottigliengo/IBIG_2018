@@ -1,8 +1,21 @@
-// Logit data generating process uniform
+// Normal dgp with weakly priors
+
+// Random number generator from a lower-bound normal distribution
+functions {
+  real normal_lb_rng(real mu, real sigma, real lb) {
+
+    real p = normal_cdf(lb, mu, sigma);  // cdf for bounds
+
+    real u = uniform_rng(p, 1);
+
+    return (sigma * inv_Phi(u)) + mu;  // inverse cdf for value
+}
+}
 
 data {
 
   int<lower = 1> N;     // number of observations
+  real lower_b;         // lower bound of the normal
 
 }
 
@@ -21,11 +34,11 @@ generated quantities {
   int smoke[N];
   int ui[N];
   vector[N] lwt;
-  vector[N] bwt;
+  real<lower = lower_b> bwt[N];
 
   // Generate parameter values from the prior predictive distribution
-  real<lower = 0> sigma = lognormal_rng(0, 1);
-  real intercept = normal_rng(0, 1);
+  real<lower = lower_b> sigma = normal_lb_rng(0, 1, lower_b);
+  real intercept = normal_rng(3, 1);
   real b_age = normal_rng(0, 1);
   real b_smoke = normal_rng(0, 1);
   real b_ui = normal_rng(0, 1);
@@ -50,8 +63,7 @@ generated quantities {
           b_lwt * lwt[n];
 
     // Outcome
-    bwt[n] = normal_rng(eta, sigma);
-
+    bwt[n] = normal_lb_rng(eta, sigma, lower_b);
 
   }
 

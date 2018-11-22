@@ -241,7 +241,7 @@ Data simulation in practice: \footnotesize
   \item{Simulate data similar to those observed by specifiyng priors
         distributions for the parameters in the model}
   \item{Are simulated data coherent with observed data?}
-  \item{Fit the model to the real data}
+  \item{Fit the model to the simulated data}
   \item{Look if the posterior distributions recover the true parameters
         values}
   \item{If the model is not able to recover the parameters values a
@@ -278,7 +278,6 @@ possible to proceed by fitting the model to the real data
   \begin{itemize}
     \item{Scale the variables by a constant, e.g. change unit of measure}
     \item{Trasform the covariates, e.g. log scale}
-    \item{Use \textbf{QR} decomposition of the design matrix}
   \end{itemize}
 \end{itemize}
 
@@ -318,7 +317,7 @@ possible to proceed by fitting the model to the real data
 
 \begin{itemize}
 \setlength\itemsep{1em}
-  \item{$R_{hat}$ ratio between the average variances of draws 
+  \item{$R_{hat}$ is the ratio between the average variances of draws 
         within each chain to the variance of pooled draws across
         chains. If it converges to $1$ it means that the chains are
         in equilibrium}
@@ -342,12 +341,12 @@ possible to proceed by fitting the model to the real data
 \begin{itemize}
 \setlength\itemsep{1em}
   \item{MCMC diagnostics are fundamental to understand if the
-        posterior has been adeguately explored}
+        posterior has been properly explored}
   \item{If the sampling process did not perform well, biased inference
         will be obtained and the interpretation of such results
         could be misleading}
-  \item{With complex models, reparameterize the model can be very
-        helpful to ease the sampling process}
+  \item{With complex models, the reparameterization of the model can be
+        very helpful to ease the sampling process}
 \end{itemize}
 
 \end{frame}
@@ -462,34 +461,27 @@ model & stacking & pseudo\_bma & pseudo\_bma\_bb\tabularnewline
 model & stacking & pseudo\_bma & pseudo\_bma\_bb\tabularnewline
 \midrule
 \endhead
-vague & 0.000 & 0.269 & 0.272\tabularnewline
-weakly\_inf\_1 & 0.396 & 0.365 & 0.356\tabularnewline
-weakly\_inf\_2 & 0.604 & 0.366 & 0.372\tabularnewline
+model\_1 & 0 & 0.456 & 0.461\tabularnewline
+model\_2 & 1 & 0.544 & 0.539\tabularnewline
 \bottomrule
 \end{longtable}
 
 \end{frame}
 
-\begin{frame}{Final remarks}
-
-\footnotesize
+\begin{frame}{Why Bayesian modeling?}
 
 \begin{itemize}
-  \item{Prior distributions play a key role in the inference process,
-        especially with complex and noisy data}
-  \item{The ideal way to elicit prior distributions is to use 
-        information from other studies or expert's opnions}
-  \item{When the ideal derivation is challenging and time-consuming,
-        priors should be calibrated given what we expect to observe}
-  \item{The use of simulated data is crucial to understand and 
-        calibrate a robust model for the data}
-  \item{The sampling process must always be evaluate to avoid biased
-        inference that could lead to unreasonable results}
-  \item{We shouldn't be afraid of models with many parameters as long
-        as they are built with regularizing (weakly informative) priors}
-  \item{Combining inference from more than one model is valuable 
-        approach to account for all the uncertainty the analyst has in
-        the specific problem}
+\setlength\itemsep{1em}
+  \item{Clinical studies are often characterized by small sample size}
+  \item{In such situations it is very difficult to make inference
+        with a certain degree of accuracy, e.g. assessing the efficacy
+        of a new drug}
+  \item{The use of priors distributions, in particular weakly 
+        informative and informative priors, may help to face this 
+        issue by providing estimates that are more regularized and
+        less variable}
+  \item{All the uncertainty that the analyst has on the problem is
+        expressed in a coherent way}
 \end{itemize}
 
 \end{frame}

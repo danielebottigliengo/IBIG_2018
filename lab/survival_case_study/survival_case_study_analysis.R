@@ -405,6 +405,21 @@ lognormal_survplot <- ggplot(
   ylab("Survival rate") +
   theme_bw()
 
+# Drug efficacy: 1, 2 and 3 years of follow-up -------------------------
+rows_df <- post_surv_pred %>%
+  mutate(sub_id = seq_along(1:nrow(.))) %>%
+  filter(study_time %in% c(1, 2, 3)) %>%
+  .[["sub_id"]]
+
+post_surv_eff <- as.data.frame(
+  x = fitted_lognormal_pred, pars = c("surv_pred")
+) %>%
+  .[, rows_df]
+
+post_eff_1 <- post_surv_eff[, 2] - post_surv_eff[, 1]
+post_eff_2 <- post_surv_eff[, 4] - post_surv_eff[, 3]
+post_eff_3 <- post_surv_eff[, 6] - post_surv_eff[, 5]
+
 # Save everything for the slides ---------------------------------------
 save(
   p_trt, p_resid_ds, p_ecog_ps, df_uniform, df_weakly,
@@ -412,5 +427,6 @@ save(
   recover_fake_weibull_centered, model_list_surv, loo_list_surv,
   stacking_weights_surv, pseudo_bma_surv, pseudo_bma_bb_surv,
   fitted_lognormal_pred, lognormal_survplot,
+  post_eff_1, post_eff_2, post_eff_3,
   file = here::here("lab/survival_case_study/survival_analysis.rda")
 )

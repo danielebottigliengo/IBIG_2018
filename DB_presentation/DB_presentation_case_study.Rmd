@@ -219,15 +219,6 @@ data {
 
 }
 
-transformed data {
-
-  real<lower = 0> tau_beta_0;       // Sd of intercept
-  real<lower = 0> tau_alpha;        // Sd alpha
-
-  tau_beta_0 = 10;
-  tau_alpha = 10;
-
-}
 "
 ```
 
@@ -270,19 +261,19 @@ model {
 
 
 ## Fit the model to the real data
-Before fitting the model to the real data, centering and scale 
-the covariates is useful to ease the sampling process
+Before fitting the model to the real data, a data pre-processing phase
+was applied to ease the sampling process
 
 \begin{itemize}
-  \item{Variables centered around the mean}
   \item{Age in years divided by a constant ($100$)}
   \item{Follow-up time from days to years}
 \end{itemize}
 
-Two steps are important to evaluate the robustness of the analysis:
+Once the model is fitted to the observed data, it is possible to
+proceed by evaluating two important aspects of the analysis:
 \begin{itemize}
   \item{MCMC diagnostics}
-  \item{Posterior Predictive Checks}
+  \item{Posterior calibration}
 \end{itemize}
 
 
@@ -485,12 +476,14 @@ ggpubr::ggarrange(
 ## Compare the models (1)
 \begin{itemize}
 \setlength\itemsep{1em}
-  \item{Models can be compared by using leave-one-out cross-validation
+  \item{Models can be compared using leave-one-out cross-validation
         (LOO-CV)}
   \item{Expected log predictive density (ELPD) computed with LOO-CV
         can be used to evaluate which model has a better fit}
   \item{Predictive weights can be assigned to each model by using
-        Stacking, Pseudo bayesian-model-averaging (Pseudo-BMA)}
+        Stacking, Pseudo bayesian-model-averaging (Pseudo-BMA) and
+        Pseudo bayesian-model-averaging with Bayesian Bootstrap
+        (Pseudo-BMA BB)}
   \item{Higher ELPD and predictive weights suggest better 
         predictive performances}
 \end{itemize}
@@ -545,11 +538,26 @@ mcmc_intervals(coef_lognormal)
 mcmc_areas(coef_lognormal)
 ```
 
-
 ## Posterior predictive survival curves
-```{r, fig.width = 10, fig.height = 5}
+```{r, fig.width = 10, fig.height = 6}
 lognormal_survplot
 ```
+
+## Therapy efficacy
+```{r}
+prob_eff_2 <- mean(post_eff_2 > 0.10)
+```
+
+Now we want to assess the efficacy of the new therapy with respect to
+the standard therapy.
+
+- Suppose that the new therapy is consider to be more effective than
+  the standard one if it produces at least a $10 \%$ increase in the
+  survival probability at $2$-years follow-up. 
+  
+- Given the model, we observe a $75.9 \%$ chance that the
+  Cyclophosphamide plus Adriamycin therapy will be more effective than
+  the Cyclophosphamide alone therapy.
 
 # Logistic Regression Case Study
 
@@ -580,10 +588,12 @@ lognormal_survplot
   vaccination status
   
       
-- $13$ confounders: race, home oxygen use, current smoking status,
-  diabetes mellitus, asthma chronic obstructive pulmonary disease,
-  chronic heart disease, immunosuppression,
-  chronic liver or kidney disease, asplenia, and other type of disease
+- The following confounders: race, home oxygen use, current smoking
+  status, diabetes mellitus, asthma chronic obstructive pulmonary
+  disease, chronic heart disease, immunosuppression,
+  chronic liver or kidney disease, asplenia, other type of disease,
+  age and timing of admission relative to the onset of influenza
+  season
 
 ## The goal
 
@@ -816,10 +826,11 @@ kable(
 
 ## Vaccine effectiveness
 ```{r, fig.height = 6, fig.width = 10}
-vaccine_eff_fun <- function(x) (1 - exp(x))
+true_eff <- (1 - exp(true_betas[length(true_betas)])) * 100
+
+vaccine_eff_fun <- function(x) (1 - exp(x)) * 100
 
 list_post_coef <- list(
-  post_coefs_uniform, post_coefs_vague, post_coefs_cauchy,
   post_coefs_student_3, post_coefs_student_7, post_coefs_student_3_unp,
   post_coefs_student_7_unp
 ) 
@@ -831,7 +842,7 @@ vaccine_eff_df <- map(
 ) %>% 
   setNames(
     object = ., nm = c(
-      "uniform", "vague", "cauchy", "student_3", "student_7",
+      "student_3", "student_7",
       "student_3_unp", "student_7_unp"
     )
   ) %>% 
@@ -849,10 +860,10 @@ vaccine_eff_df <- map(
   mutate(
     prior = factor(
       c(
-      "uniform", "vague", "cauchy", "student_3", "student_7",
+        "student_3", "student_7",
       "student_3_unp", "student_7_unp"
     ), levels = c(
-      "uniform", "vague", "cauchy", "student_3", "student_7",
+      "student_3", "student_7",
       "student_3_unp", "student_7_unp"
     )
     )
@@ -863,26 +874,72 @@ ggplot(
   mapping = aes(
     x = post_median, y = prior
   )
-) + 
-  geom_point(
-    size = 2, 
-    position = ggstance::position_dodgev(height = 0.4), 
-    colour = "forestgreen"
+) +
+  geom_errorbarh(
+    mapping = aes(xmin = lower_90, xmax = upper_90),
+    size = 1, position = ggstance::position_dodgev(height = 0.4),
+    height = 0, colour = "firebrick1"
   ) +
   geom_errorbarh(
     mapping = aes(xmin = lower_70, xmax = upper_70),
     size = 1.6, position = ggstance::position_dodgev(height = 0.4),
-    colour = "forestgreen", height = 0
+    colour = "firebrick3", height = 0
   ) +
-  geom_errorbarh(
-    mapping = aes(xmin = lower_90, xmax = upper_90),
-    size = 1, position = ggstance::position_dodgev(height = 0.4),
-    height = 0, colour = "forestgreen"
+  geom_point(
+    size = 2.5, 
+    position = ggstance::position_dodgev(height = 0.4), 
+    colour = "firebrick"
   ) +
   xlab("(1 - OR) x 100 posterior estimates") +
   ylab("Model's priors") + 
   theme_classic()
 ```
+
+## Vaccine effectiveness
+```{r, fig.height = 6, fig.width = 10}
+# Assessing effectiveness with stacking weights
+vaccine_df <- data_frame(
+  iter = rep(1:4000, 4L),
+  model = rep(names(stacking_weights), each = 4000),
+  wts = rep(stacking_weights, each = 4000),
+  post = c(
+    post_coefs_student_3[["vaccine"]], 
+    post_coefs_student_7[["vaccine"]],
+    post_coefs_student_3_unp[["vaccine"]], 
+    post_coefs_student_7_unp[["vaccine"]]
+  ),
+  eff = (1 - exp(post)) * 100
+) %>% 
+  group_by(iter) %>% 
+  summarize(avg_eff = sum(eff * wts))
+
+ggplot(
+  data = vaccine_df, mapping = aes(x = avg_eff)
+) +
+  geom_histogram(
+    colour = "forestgreen", fill = "forestgreen", alpha = 0.2,
+    bins = 100
+  ) +
+  xlab("Averaged (1 - OR) * 100") +
+  ylab("") +
+  theme_bw()
+
+avg_eff <- mean(vaccine_df[["avg_eff"]] > 70)
+```
+
+## Vaccine effectiveness
+Now we want to assess the efficacy of the vaccine in preventing 
+influenza-associated acute respiratory hospitalizations in adults.
+
+\begin{itemize}
+\setlength\itemsep{1em}
+  \item{Suppose that the vaccine is considered to be effective if
+        $(1 - OR) * 100$ is at least $70 \%$}
+  \item{Given the averaged estimate of vaccine effectiveness (using
+        the weights produced by stacking), it is
+        possible to assess that the vaccine will be effective in
+        preventing influenza $85.98 \%$ of the times}
+\end{itemize}
 
 ## Additional information  
 - Stan's website at [http://mc-stan.org/](http://mc-stan.org/). Here
