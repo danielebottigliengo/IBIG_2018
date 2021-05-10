@@ -193,7 +193,7 @@ db_logit <- db
 
 save(
   db_logit, true_betas,
-  file = here::here("data/logistic_case_study.rda")
+  file = here::here("lab/logistic_case_study/logistic_case_study.rda")
 )
 
 

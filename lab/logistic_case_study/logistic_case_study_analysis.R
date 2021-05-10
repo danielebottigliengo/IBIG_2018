@@ -7,7 +7,7 @@ library(rstan)
 library(bayesplot)
 library(loo)
 
-load(here::here("data/logistic_case_study.rda"))
+load(here::here("lab/logistic_case_study/logistic_case_study.rda"))
 source(here::here("lab/logistic_case_study/logit_misc_functions.R"))
 
 # The goal of the case study is tho show how priors can impact the
